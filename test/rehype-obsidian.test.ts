@@ -82,6 +82,49 @@ describe("rehype-obsidian", () => {
     );
   });
 
+  it("replaces Twitter images with tweet embeds", () => {
+    const tree = process(
+      '<img src="https://twitter.com/user/status/1234567890123456789" />' +
+        '<img src="https://x.com/another/status/9876543210987654321" />',
+    );
+    const blockquotes = findElements(tree, "blockquote");
+
+    expect(blockquotes).toHaveLength(2);
+
+    const [first, second] = blockquotes;
+    const firstClasses = Array.isArray(first.properties?.className)
+      ? first.properties?.className
+      : typeof first.properties?.className === "string"
+        ? [first.properties?.className]
+        : [];
+    const secondClasses = Array.isArray(second.properties?.className)
+      ? second.properties?.className
+      : typeof second.properties?.className === "string"
+        ? [second.properties?.className]
+        : [];
+
+    expect(firstClasses).toContain("external-embed");
+    expect(firstClasses).toContain("twitter");
+    expect(secondClasses).toContain("external-embed");
+    expect(secondClasses).toContain("twitter");
+
+    const firstLink = first.children.find(
+      (child): child is Element =>
+        child.type === "element" && child.tagName === "a",
+    );
+    const secondLink = second.children.find(
+      (child): child is Element =>
+        child.type === "element" && child.tagName === "a",
+    );
+
+    expect(firstLink?.properties?.href).toBe(
+      "https://twitter.com/user/status/1234567890123456789",
+    );
+    expect(secondLink?.properties?.href).toBe(
+      "https://x.com/another/status/9876543210987654321",
+    );
+  });
+
   it("enables checkbox inputs", () => {
     const tree = process('<input type="checkbox" disabled />');
     const input = findFirstElement(tree, "input");
@@ -136,19 +179,46 @@ describe("rehype-obsidian", () => {
     expect(container.properties?.role).toBe("dialog");
   });
 
+  it("marks obsidian:// links", () => {
+    const tree = process(
+      '<a href="obsidian://open?vault=Test&file=note">Open</a>',
+    );
+    const link = findFirstElement(tree, "a");
+
+    const linkClasses = Array.isArray(link?.properties?.className)
+      ? link?.properties?.className
+      : typeof link?.properties?.className === "string"
+        ? [link?.properties?.className]
+        : [];
+
+    expect(link?.properties?.href).toBe("obsidian://open?vault=Test&file=note");
+    expect(link?.properties?.dataObsidianUri).toBe(
+      "obsidian://open?vault=Test&file=note",
+    );
+    expect(linkClasses).toContain("obsidian-uri");
+  });
+
   it("respects disabled options", () => {
     const tree = process(
-      '<p>Keep ^blockId</p><img src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" /><input type="checkbox" disabled />',
+      "<p>Keep ^blockId</p>" +
+        '<img src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />' +
+        '<img src="https://twitter.com/user/status/1234567890123456789" />' +
+        '<a href="obsidian://open?vault=Test&file=note">Open</a>' +
+        '<input type="checkbox" disabled />',
       {
         blockReferences: false,
         youTubeEmbed: false,
+        tweetEmbed: false,
         checkbox: false,
+        obsidianUri: false,
       },
     );
 
     const paragraph = findFirstElement(tree, "p");
     const img = findFirstElement(tree, "img");
     const iframe = findFirstElement(tree, "iframe");
+    const blockquote = findFirstElement(tree, "blockquote");
+    const link = findFirstElement(tree, "a");
     const input = findFirstElement(tree, "input");
 
     expect(paragraph?.properties?.id).toBeUndefined();
@@ -159,6 +229,9 @@ describe("rehype-obsidian", () => {
     expect(textChild?.value).toBe("Keep ^blockId");
     expect(img).toBeDefined();
     expect(iframe).toBeUndefined();
+    expect(blockquote).toBeUndefined();
+    expect(link?.properties?.className).toBeUndefined();
+    expect(link?.properties?.dataObsidianUri).toBeUndefined();
     expect(input?.properties?.disabled).toBe(true);
     expect(input?.properties?.className).toBeUndefined();
   });

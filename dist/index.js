@@ -189,18 +189,77 @@ var mermaidExpand = (tree) => {
   );
 };
 
-// src/lib/youtube-embed.ts
+// src/lib/obsidian-uri.ts
 import { visit as visit4 } from "unist-util-visit";
-var youTubeVideoRegex = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-var youTubePlaylistRegex = /[?&]list=([^#?&]*)/;
 var isElement4 = (node) => typeof node === "object" && node !== null && node.type === "element";
+var obsidianUri = (tree) => {
+  visit4(tree, "element", (node) => {
+    if (!isElement4(node) || node.tagName !== "a") return;
+    if (!node.properties) return;
+    const href = node.properties.href;
+    if (typeof href !== "string" || !href.startsWith("obsidian://")) return;
+    const className = node.properties.className;
+    const classList = Array.isArray(className) ? className : typeof className === "string" ? [className] : [];
+    const nextClassList = classList.includes("obsidian-uri") ? classList : [...classList, "obsidian-uri"];
+    node.properties = {
+      ...node.properties,
+      className: nextClassList,
+      dataObsidianUri: href
+    };
+  });
+};
+
+// src/lib/tweet-embed.ts
+import { visit as visit5 } from "unist-util-visit";
+var tweetRegex = /^https:\/\/(twitter\.com|x\.com|mobile\.twitter\.com)\/([^/]+)\/status\/(\d+)$/;
+var isElement5 = (node) => typeof node === "object" && node !== null && node.type === "element";
 var isParent3 = (node) => typeof node === "object" && node !== null && Array.isArray(node.children);
-var youTubeEmbed = (tree) => {
-  visit4(
+var tweetEmbed = (tree) => {
+  visit5(
     tree,
     "element",
     (node, index, parent) => {
-      if (!isElement4(node) || node.tagName !== "img") return;
+      if (!isElement5(node) || node.tagName !== "img") return;
+      if (!node.properties) return;
+      const src = node.properties.src;
+      if (typeof src !== "string") return;
+      const match = src.match(tweetRegex);
+      const user = match?.[2];
+      const statusId = match?.[3];
+      if (!user || !statusId) return;
+      const blockquote = {
+        type: "element",
+        tagName: "blockquote",
+        properties: {
+          className: ["external-embed", "twitter"]
+        },
+        children: [
+          {
+            type: "element",
+            tagName: "a",
+            properties: { href: src },
+            children: [{ type: "text", value: `Tweet by @${user}` }]
+          }
+        ]
+      };
+      if (!isParent3(parent) || typeof index !== "number") return;
+      parent.children[index] = blockquote;
+    }
+  );
+};
+
+// src/lib/youtube-embed.ts
+import { visit as visit6 } from "unist-util-visit";
+var youTubeVideoRegex = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+var youTubePlaylistRegex = /[?&]list=([^#?&]*)/;
+var isElement6 = (node) => typeof node === "object" && node !== null && node.type === "element";
+var isParent4 = (node) => typeof node === "object" && node !== null && Array.isArray(node.children);
+var youTubeEmbed = (tree) => {
+  visit6(
+    tree,
+    "element",
+    (node, index, parent) => {
+      if (!isElement6(node) || node.tagName !== "img") return;
       if (!node.properties) return;
       const src = node.properties.src;
       if (typeof src !== "string") return;
@@ -230,7 +289,7 @@ var youTubeEmbed = (tree) => {
         },
         children: []
       };
-      if (!isParent3(parent) || typeof index !== "number") return;
+      if (!isParent4(parent) || typeof index !== "number") return;
       parent.children[index] = iframe;
     }
   );
@@ -240,16 +299,20 @@ var youTubeEmbed = (tree) => {
 var defaultOptions = {
   blockReferences: true,
   youTubeEmbed: true,
+  tweetEmbed: true,
   checkbox: true,
-  mermaid: true
+  mermaid: true,
+  obsidianUri: true
 };
 function rehypeObsidian(userOpts) {
   const opts = { ...defaultOptions, ...userOpts };
   return (tree, file) => {
     if (opts.blockReferences) blockReferences(tree, file);
     if (opts.youTubeEmbed) youTubeEmbed(tree);
+    if (opts.tweetEmbed) tweetEmbed(tree);
     if (opts.checkbox) checkbox(tree);
     if (opts.mermaid) mermaidExpand(tree);
+    if (opts.obsidianUri) obsidianUri(tree);
   };
 }
 export {
@@ -257,6 +320,8 @@ export {
   checkbox,
   rehypeObsidian as default,
   mermaidExpand,
+  obsidianUri,
+  tweetEmbed,
   youTubeEmbed
 };
 //# sourceMappingURL=index.js.map
