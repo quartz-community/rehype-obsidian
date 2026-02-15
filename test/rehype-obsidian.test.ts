@@ -165,6 +165,26 @@ describe("rehype-obsidian", () => {
     expect(checkedClasses).toContain("is-checked");
   });
 
+  it("uses custom task character from dataTaskChar property", () => {
+    const tree = process(
+      '<ul class="contains-task-list">' +
+        '<li class="task-list-item" data-task-char="?"><input type="checkbox" checked disabled> question</li>' +
+        '<li class="task-list-item" data-task-char="/"><input type="checkbox" checked disabled> partial</li>' +
+        '<li class="task-list-item" data-task-char=" "><input type="checkbox" disabled> unchecked custom</li>' +
+        "</ul>",
+    );
+
+    const items = findElements(tree, "li");
+    expect(items).toHaveLength(3);
+
+    expect(items[0].properties?.dataTask).toBe("?");
+    expect(items[1].properties?.dataTask).toBe("/");
+    expect(items[2].properties?.dataTask).toBe(" ");
+    expect(items[0].properties?.dataTaskChar).toBeUndefined();
+    expect(items[1].properties?.dataTaskChar).toBeUndefined();
+    expect(items[2].properties?.dataTaskChar).toBeUndefined();
+  });
+
   it("adds mermaid expand controls", () => {
     const tree = process('<pre><code class="mermaid">graph LR</code></pre>');
     const pre = findFirstElement(tree, "pre");

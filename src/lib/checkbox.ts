@@ -45,6 +45,12 @@ export const checkbox = (tree: Root) => {
     if (!checkboxInput) return;
 
     const checked = Boolean(checkboxInput.properties?.checked);
+    const taskChar =
+      typeof node.properties.dataTaskChar === "string"
+        ? node.properties.dataTaskChar
+        : checked
+          ? "x"
+          : "";
     const nextClassList =
       checked && !classList.includes("is-checked")
         ? [...classList, "is-checked"]
@@ -53,7 +59,9 @@ export const checkbox = (tree: Root) => {
     node.properties = {
       ...node.properties,
       className: nextClassList,
-      dataTask: checked ? "x" : "",
+      dataTask: taskChar,
     };
+    // Clean up the intermediate property — only data-task should remain
+    delete node.properties.dataTaskChar;
   });
 };

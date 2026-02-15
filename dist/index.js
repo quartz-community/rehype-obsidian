@@ -102,12 +102,14 @@ var checkbox = (tree) => {
     );
     if (!checkboxInput) return;
     const checked = Boolean(checkboxInput.properties?.checked);
+    const taskChar = typeof node.properties.dataTaskChar === "string" ? node.properties.dataTaskChar : checked ? "x" : "";
     const nextClassList = checked && !classList.includes("is-checked") ? [...classList, "is-checked"] : classList;
     node.properties = {
       ...node.properties,
       className: nextClassList,
-      dataTask: checked ? "x" : ""
+      dataTask: taskChar
     };
+    delete node.properties.dataTaskChar;
   });
 };
 
