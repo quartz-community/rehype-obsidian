@@ -36,6 +36,26 @@ const findFirstElement = (tree: Root, tagName: string): Element | undefined => {
   return found;
 };
 
+const findElements = (tree: Root, tagName: string): Element[] => {
+  const found: Element[] = [];
+
+  const walk = (node: Root | Element) => {
+    if (node.type === "element" && node.tagName === tagName) {
+      found.push(node);
+    }
+    if ("children" in node) {
+      for (const child of node.children) {
+        if (child.type === "element") {
+          walk(child);
+        }
+      }
+    }
+  };
+
+  walk(tree);
+  return found;
+};
+
 describe("rehype-obsidian", () => {
   it("handles block references on paragraphs", () => {
     const tree = process("<p>Some text ^blockId</p>");
@@ -68,6 +88,38 @@ describe("rehype-obsidian", () => {
 
     expect(input?.properties?.disabled).toBe(false);
     expect(input?.properties?.className).toBe("checkbox-toggle");
+  });
+
+  it("adds data-task attribute to task list items", () => {
+    const tree = process(
+      '<ul class="contains-task-list">' +
+        '<li class="task-list-item"><input type="checkbox" disabled> unchecked</li>' +
+        '<li class="task-list-item"><input type="checkbox" checked disabled> checked with x</li>' +
+        "</ul>",
+    );
+
+    const items = findElements(tree, "li");
+    expect(items).toHaveLength(2);
+
+    const [unchecked, checked] = items;
+    const uncheckedClasses = Array.isArray(unchecked.properties?.className)
+      ? unchecked.properties?.className
+      : typeof unchecked.properties?.className === "string"
+        ? [unchecked.properties?.className]
+        : [];
+    const checkedClasses = Array.isArray(checked.properties?.className)
+      ? checked.properties?.className
+      : typeof checked.properties?.className === "string"
+        ? [checked.properties?.className]
+        : [];
+
+    expect(unchecked.properties?.dataTask).toBe("");
+    expect(uncheckedClasses).toContain("task-list-item");
+    expect(uncheckedClasses).not.toContain("is-checked");
+
+    expect(checked.properties?.dataTask).toBe("x");
+    expect(checkedClasses).toContain("task-list-item");
+    expect(checkedClasses).toContain("is-checked");
   });
 
   it("adds mermaid expand controls", () => {

@@ -91,6 +91,24 @@ var checkbox = (tree) => {
       className: "checkbox-toggle"
     };
   });
+  visit2(tree, "element", (node) => {
+    if (!isElement2(node) || node.tagName !== "li") return;
+    if (!node.properties) return;
+    const className = node.properties.className;
+    const classList = Array.isArray(className) ? className : typeof className === "string" ? [className] : [];
+    if (!classList.includes("task-list-item")) return;
+    const checkboxInput = node.children.find(
+      (child) => isElement2(child) && child.tagName === "input" && child.properties?.type === "checkbox"
+    );
+    if (!checkboxInput) return;
+    const checked = Boolean(checkboxInput.properties?.checked);
+    const nextClassList = checked && !classList.includes("is-checked") ? [...classList, "is-checked"] : classList;
+    node.properties = {
+      ...node.properties,
+      className: nextClassList,
+      dataTask: checked ? "x" : ""
+    };
+  });
 };
 
 // src/lib/mermaid-expand.ts

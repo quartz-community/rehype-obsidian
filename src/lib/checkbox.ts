@@ -21,4 +21,39 @@ export const checkbox = (tree: Root) => {
       className: "checkbox-toggle",
     };
   });
+
+  visit(tree, "element", (node: Element) => {
+    if (!isElement(node) || node.tagName !== "li") return;
+    if (!node.properties) return;
+
+    const className = node.properties.className;
+    const classList = Array.isArray(className)
+      ? className
+      : typeof className === "string"
+        ? [className]
+        : [];
+
+    if (!classList.includes("task-list-item")) return;
+
+    const checkboxInput = node.children.find(
+      (child): child is Element =>
+        isElement(child) &&
+        child.tagName === "input" &&
+        child.properties?.type === "checkbox",
+    );
+
+    if (!checkboxInput) return;
+
+    const checked = Boolean(checkboxInput.properties?.checked);
+    const nextClassList =
+      checked && !classList.includes("is-checked")
+        ? [...classList, "is-checked"]
+        : classList;
+
+    node.properties = {
+      ...node.properties,
+      className: nextClassList,
+      dataTask: checked ? "x" : "",
+    };
+  });
 };
