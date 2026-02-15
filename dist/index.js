@@ -213,10 +213,12 @@ var obsidianUri = (tree) => {
 
 // src/lib/tweet-embed.ts
 import { visit as visit5 } from "unist-util-visit";
+import { fromHtml } from "hast-util-from-html";
 var tweetRegex = /^https:\/\/(twitter\.com|x\.com|mobile\.twitter\.com)\/([^/]+)\/status\/(\d+)$/;
 var isElement5 = (node) => typeof node === "object" && node !== null && node.type === "element";
 var isParent3 = (node) => typeof node === "object" && node !== null && Array.isArray(node.children);
-var tweetEmbed = (tree) => {
+function collectTweetNodes(tree) {
+  const tweets = [];
   visit5(
     tree,
     "element",
@@ -227,27 +229,76 @@ var tweetEmbed = (tree) => {
       if (typeof src !== "string") return;
       const match = src.match(tweetRegex);
       const user = match?.[2];
-      const statusId = match?.[3];
-      if (!user || !statusId) return;
-      const blockquote = {
-        type: "element",
-        tagName: "blockquote",
-        properties: {
-          className: ["external-embed", "twitter"]
-        },
-        children: [
-          {
-            type: "element",
-            tagName: "a",
-            properties: { href: src },
-            children: [{ type: "text", value: `Tweet by @${user}` }]
-          }
-        ]
-      };
+      if (!user || !match?.[3]) return;
       if (!isParent3(parent) || typeof index !== "number") return;
-      parent.children[index] = blockquote;
+      tweets.push({ index, parent, url: src, user });
     }
   );
+  return tweets;
+}
+async function fetchOEmbed(url) {
+  const oembedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}&omit_script=true&dnt=true`;
+  try {
+    const response = await fetch(oembedUrl);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+function oembedHtmlToHast(html) {
+  const tree = fromHtml(html, { fragment: true });
+  const element = tree.children.find(
+    (child) => child.type === "element"
+  );
+  if (element) return element;
+  return {
+    type: "element",
+    tagName: "div",
+    properties: {},
+    children: tree.children
+  };
+}
+function makeFallbackBlockquote(url, user) {
+  return {
+    type: "element",
+    tagName: "blockquote",
+    properties: { className: ["external-embed", "twitter"] },
+    children: [
+      {
+        type: "element",
+        tagName: "a",
+        properties: { href: url },
+        children: [{ type: "text", value: `Tweet by @${user}` }]
+      }
+    ]
+  };
+}
+var tweetEmbed = async (tree) => {
+  const tweets = collectTweetNodes(tree);
+  if (tweets.length === 0) return;
+  const results = await Promise.all(
+    tweets.map(async (t) => ({
+      ...t,
+      oembed: await fetchOEmbed(t.url)
+    }))
+  );
+  for (const { index, parent, url, user, oembed } of results) {
+    let replacement;
+    if (oembed?.html) {
+      replacement = oembedHtmlToHast(oembed.html);
+      replacement.properties ??= {};
+      const existing = Array.isArray(replacement.properties.className) ? replacement.properties.className : [];
+      replacement.properties.className = [
+        ...existing,
+        "external-embed",
+        "twitter"
+      ];
+    } else {
+      replacement = makeFallbackBlockquote(url, user);
+    }
+    parent.children[index] = replacement;
+  }
 };
 
 // src/lib/youtube-embed.ts
@@ -308,10 +359,10 @@ var defaultOptions = {
 };
 function rehypeObsidian(userOpts) {
   const opts = { ...defaultOptions, ...userOpts };
-  return (tree, file) => {
+  return async (tree, file) => {
     if (opts.blockReferences) blockReferences(tree, file);
     if (opts.youTubeEmbed) youTubeEmbed(tree);
-    if (opts.tweetEmbed) tweetEmbed(tree);
+    if (opts.tweetEmbed) await tweetEmbed(tree);
     if (opts.checkbox) checkbox(tree);
     if (opts.mermaid) mermaidExpand(tree);
     if (opts.obsidianUri) obsidianUri(tree);

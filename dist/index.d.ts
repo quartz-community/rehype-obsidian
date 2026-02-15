@@ -11,7 +11,7 @@ declare const mermaidExpand: (tree: Root) => void;
 
 declare const obsidianUri: (tree: Root) => void;
 
-declare const tweetEmbed: (tree: Root) => void;
+declare const tweetEmbed: (tree: Root) => Promise<void>;
 
 declare const youTubeEmbed: (tree: Root) => void;
 
@@ -25,6 +25,6 @@ interface RehypeObsidianOptions {
 }
 declare function rehypeObsidian(userOpts?: RehypeObsidianOptions): (tree: Root, file: {
     data?: Record<string, unknown>;
-}) => void;
+}) => Promise<void>;
 
 export { type RehypeObsidianOptions, blockReferences, checkbox, rehypeObsidian as default, mermaidExpand, obsidianUri, tweetEmbed, youTubeEmbed };

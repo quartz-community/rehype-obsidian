@@ -27,10 +27,10 @@ const defaultOptions: Required<RehypeObsidianOptions> = {
 
 export default function rehypeObsidian(userOpts?: RehypeObsidianOptions) {
   const opts = { ...defaultOptions, ...userOpts };
-  return (tree: Root, file: { data?: Record<string, unknown> }) => {
+  return async (tree: Root, file: { data?: Record<string, unknown> }) => {
     if (opts.blockReferences) blockReferences(tree, file);
     if (opts.youTubeEmbed) youTubeEmbed(tree);
-    if (opts.tweetEmbed) tweetEmbed(tree);
+    if (opts.tweetEmbed) await tweetEmbed(tree);
     if (opts.checkbox) checkbox(tree);
     if (opts.mermaid) mermaidExpand(tree);
     if (opts.obsidianUri) obsidianUri(tree);
