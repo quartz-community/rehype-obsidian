@@ -208,7 +208,7 @@ function visit(tree, testOrVisitor, visitorOrReverse, maybeReverse) {
 }
 
 // src/lib/block-references.ts
-var blockReferenceRegex = /\^([-_A-Za-z0-9]+)$/;
+var blockReferenceRegex = /\^([^\s^]+)$/;
 var inlineTagTypes = /* @__PURE__ */ new Set(["p", "li"]);
 var blockTagTypes = /* @__PURE__ */ new Set(["blockquote"]);
 var isElement = (node) => typeof node === "object" && node !== null && node.type === "element";

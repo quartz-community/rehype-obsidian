@@ -1,7 +1,7 @@
 import type { Element, Parent, Root, Text } from "hast";
 import { visit } from "unist-util-visit";
 
-const blockReferenceRegex = /\^([-_A-Za-z0-9]+)$/;
+const blockReferenceRegex = /\^([^\s^]+)$/;
 const inlineTagTypes = new Set(["p", "li"]);
 const blockTagTypes = new Set(["blockquote"]);
 
