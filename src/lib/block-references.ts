@@ -46,8 +46,9 @@ const applyBlockId = (
   if (!node.properties) {
     node.properties = {};
   }
-  node.properties.id = blockId;
-  blocks[blockId] = node;
+  const slugged = blockId.toLowerCase();
+  node.properties.id = slugged;
+  blocks[slugged] = node;
 };
 
 export const blockReferences = (tree: Root, file: VFileLike) => {
