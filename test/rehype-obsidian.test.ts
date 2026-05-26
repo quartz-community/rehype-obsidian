@@ -68,13 +68,20 @@ describe("rehype-obsidian", () => {
     const tree = await process("<p>Some text ^blockId</p>");
     const paragraph = findFirstElement(tree, "p");
 
-    expect(paragraph?.properties?.id).toBe("blockId");
+    expect(paragraph?.properties?.id).toBe("blockid");
 
     if (!paragraph) throw new Error("Paragraph not found");
     const textChild = paragraph.children.find(
       (child): child is Text => child.type === "text",
     );
     expect(textChild?.value).toBe("Some text");
+  });
+
+  it("lowercases mixed-case block reference IDs", async () => {
+    const tree = await process("<p>Content ^CB-A34B78B4ICqt6zX6xBDAh6CT</p>");
+    const paragraph = findFirstElement(tree, "p");
+
+    expect(paragraph?.properties?.id).toBe("cb-a34b78b4icqt6zx6xbdah6ct");
   });
 
   it("replaces YouTube images with embeds", async () => {
