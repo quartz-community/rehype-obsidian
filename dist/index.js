@@ -265,12 +265,14 @@ var blockReferences = (tree, file) => {
       const stripped = lastChild.value.replace(blockReferenceRegex, "").trimEnd();
       if (stripped.length === 0) {
         children.pop();
-        if (isParent(parent)) {
-          for (let i = (index2 ?? 0) - 1; i >= 0; i -= 1) {
-            const sibling = parent.children[i];
-            if (isElement(sibling)) {
-              applyBlockId(sibling, blockId, blocks);
-              return;
+        if (children.length === 0) {
+          if (isParent(parent)) {
+            for (let i = (index2 ?? 0) - 1; i >= 0; i -= 1) {
+              const sibling = parent.children[i];
+              if (isElement(sibling)) {
+                applyBlockId(sibling, blockId, blocks);
+                return;
+              }
             }
           }
         }
