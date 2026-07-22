@@ -16,9 +16,6 @@ const hasClassName = (node: Element, className: string) => {
   if (Array.isArray(classes)) {
     return classes.includes(className);
   }
-  if (typeof classes === "string") {
-    return classes.split(/\s+/).includes(className);
-  }
   return false;
 };
 

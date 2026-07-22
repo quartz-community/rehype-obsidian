@@ -296,7 +296,7 @@ var checkbox = (tree) => {
       ...properties,
       checked,
       disabled: false,
-      className: "checkbox-toggle"
+      className: ["checkbox-toggle"]
     };
   });
   visit(tree, "element", (node) => {
@@ -328,9 +328,6 @@ var hasClassName = (node, className) => {
   const classes = node.properties?.className;
   if (Array.isArray(classes)) {
     return classes.includes(className);
-  }
-  if (typeof classes === "string") {
-    return classes.split(/\s+/).includes(className);
   }
   return false;
 };
@@ -11183,7 +11180,7 @@ var youTubeEmbed = (tree) => {
         properties: {
           className: ["external-embed", "youtube"],
           allow: "fullscreen",
-          frameBorder: 0,
+          frameBorder: "0",
           width: "600px",
           src: iframeSrc
         },
