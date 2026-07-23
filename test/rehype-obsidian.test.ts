@@ -149,7 +149,7 @@ describe("rehype-obsidian", () => {
     const input = findFirstElement(tree, "input");
 
     expect(input?.properties?.disabled).toBe(false);
-    expect(input?.properties?.className).toBe("checkbox-toggle");
+    expect(input?.properties?.className).toEqual(["checkbox-toggle"]);
   });
 
   it("adds data-task attribute to task list items", async () => {
@@ -273,7 +273,7 @@ describe("rehype-obsidian", () => {
 
     expect(paragraph?.properties?.id).toBe("task");
     expect(input?.properties?.disabled).toBe(false);
-    expect(input?.properties?.className).toBe("checkbox-toggle");
+    expect(input?.properties?.className).toEqual(["checkbox-toggle"]);
     expect(iframe?.properties?.src).toBe(
       "https://www.youtube.com/embed/dQw4w9WgXcQ",
     );

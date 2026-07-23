@@ -50,7 +50,7 @@ export const youTubeEmbed = (tree: Root) => {
         properties: {
           className: ["external-embed", "youtube"],
           allow: "fullscreen",
-          frameBorder: 0,
+          frameBorder: "0",
           width: "600px",
           src: iframeSrc,
         },

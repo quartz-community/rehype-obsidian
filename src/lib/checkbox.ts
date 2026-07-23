@@ -18,7 +18,7 @@ export const checkbox = (tree: Root) => {
       ...properties,
       checked,
       disabled: false,
-      className: "checkbox-toggle",
+      className: ["checkbox-toggle"],
     };
   });
 
