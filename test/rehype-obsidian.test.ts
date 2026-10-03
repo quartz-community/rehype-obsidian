@@ -280,3 +280,27 @@ describe("rehype-obsidian", () => {
     expect(pre?.children.length).toBe(3);
   });
 });
+
+describe("stripComments", () => {
+  it("removes the empty comment marker remark-obsidian leaves behind", async () => {
+    const tree = await process(
+      "<p>before</p><obsidian-comment></obsidian-comment><p>after</p>",
+    );
+    expect(findFirstElement(tree, "obsidian-comment")).toBeUndefined();
+    expect(findFirstElement(tree, "p")).toBeDefined();
+  });
+
+  it("removes several markers, including one nested in a paragraph", async () => {
+    const tree = await process(
+      "<p>a<obsidian-comment></obsidian-comment>b</p><obsidian-comment></obsidian-comment>",
+    );
+    expect(findFirstElement(tree, "obsidian-comment")).toBeUndefined();
+  });
+
+  it("leaves them alone when disabled, so the marker is observable", async () => {
+    const tree = await process("<obsidian-comment></obsidian-comment>", {
+      stripComments: false,
+    });
+    expect(findFirstElement(tree, "obsidian-comment")).toBeDefined();
+  });
+});
