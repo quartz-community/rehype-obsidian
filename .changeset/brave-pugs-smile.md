@@ -17,4 +17,10 @@ the ordinal the renderer assigned rather than the label. Detection treats
 re-parses the tree through HTML on the way here and a bare attribute arrives as
 the empty string.
 
+Removing a marker also closes the gap it left in the numbering. References are
+numbered as they are met, so a bared one still consumed an ordinal: with `[^a]`
+undefined and `[^b]` defined, the surviving marker rendered as `2` where
+Obsidian shows `1`. Numbering by first appearance of each target restores that
+and keeps repeated references to one definition sharing a number.
+
 New `bareFootnotes` option, on by default.

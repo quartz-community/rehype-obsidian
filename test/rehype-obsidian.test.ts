@@ -342,4 +342,26 @@ describe("bareFootnotes", () => {
     const tree = await process(REF, { bareFootnotes: false });
     expect(findFirstElement(tree, "sup")).toBeDefined();
   });
+
+  const defined = (id: string, ordinal: string) =>
+    `<sup><a href="#user-content-fn-${id}" data-footnote-ref>${ordinal}</a></sup>`;
+  const section = (id: string) =>
+    `<section class="footnotes"><li id="user-content-fn-${id}">b</li></section>`;
+
+  it("closes the gap a bared marker leaves in the numbering", async () => {
+    const tree = await process(
+      `<p>see ${REF} and ${defined("b", "2")}</p>${section("b")}`
+    );
+    expect(text(tree)).toContain("see acell and 1");
+  });
+
+  it("keeps repeated references to one definition on a shared number", async () => {
+    const tree = await process(
+      `<p>${REF} ${defined("b", "2")} ${defined("b", "2")}</p>${section("b")}`
+    );
+    expect(findElements(tree, "sup").map((s) => text(s as never))).toEqual([
+      "1",
+      "1",
+    ]);
+  });
 });

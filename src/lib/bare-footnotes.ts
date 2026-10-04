@@ -58,4 +58,29 @@ export const bareFootnotes = (tree: Root): void => {
     parent.children.splice(index, 1, bare);
     return index;
   });
+
+  renumber(tree);
+};
+
+/**
+ * Close the gaps the removed markers left in the numbering.
+ *
+ * `mdast-util-to-hast` numbers references as it meets them, so one that is
+ * about to be bared still consumes an ordinal: with `[^a]` undefined and
+ * `[^b]` defined, the surviving marker renders as `2` where Obsidian shows
+ * `1`. Numbering by first appearance of each target reproduces the original
+ * rule on what is left, so repeated references to one definition keep sharing
+ * a number.
+ */
+const renumber = (tree: Root): void => {
+  const ordinals = new Map<string, number>();
+  visit(tree, "element", (node: Element) => {
+    if (!isFootnoteAnchor(node)) return;
+    const href = node.properties?.href;
+    if (typeof href !== "string") return;
+    const ordinal = ordinals.get(href) ?? ordinals.size + 1;
+    ordinals.set(href, ordinal);
+    const label = node.children.find((child) => child.type === "text");
+    if (label) (label as Text).value = String(ordinal);
+  });
 };
