@@ -60,8 +60,8 @@ const getClasses = (el: Element): string[] =>
   Array.isArray(el.properties?.className)
     ? (el.properties.className as string[])
     : typeof el.properties?.className === "string"
-      ? [el.properties.className]
-      : [];
+    ? [el.properties.className]
+    : [];
 
 describe("rehype-obsidian", () => {
   it("handles block references on paragraphs", async () => {
@@ -72,7 +72,7 @@ describe("rehype-obsidian", () => {
 
     if (!paragraph) throw new Error("Paragraph not found");
     const textChild = paragraph.children.find(
-      (child): child is Text => child.type === "text",
+      (child): child is Text => child.type === "text"
     );
     expect(textChild?.value).toBe("Some text");
   });
@@ -86,20 +86,20 @@ describe("rehype-obsidian", () => {
 
   it("replaces YouTube images with embeds", async () => {
     const tree = await process(
-      '<img src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />',
+      '<img src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />'
     );
     const iframe = findFirstElement(tree, "iframe");
 
     expect(iframe).toBeDefined();
     expect(iframe?.properties?.src).toBe(
-      "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      "https://www.youtube.com/embed/dQw4w9WgXcQ"
     );
   });
 
   it("falls back to link blockquote for unavailable tweets", async () => {
     const tree = await process(
       '<img src="https://twitter.com/user/status/1234567890123456789" />' +
-        '<img src="https://x.com/another/status/9876543210987654321" />',
+        '<img src="https://x.com/another/status/9876543210987654321" />'
     );
     const blockquotes = findElements(tree, "blockquote");
 
@@ -113,24 +113,24 @@ describe("rehype-obsidian", () => {
 
     const firstLink = first.children.find(
       (child): child is Element =>
-        child.type === "element" && child.tagName === "a",
+        child.type === "element" && child.tagName === "a"
     );
     const secondLink = second.children.find(
       (child): child is Element =>
-        child.type === "element" && child.tagName === "a",
+        child.type === "element" && child.tagName === "a"
     );
 
     expect(firstLink?.properties?.href).toBe(
-      "https://twitter.com/user/status/1234567890123456789",
+      "https://twitter.com/user/status/1234567890123456789"
     );
     expect(secondLink?.properties?.href).toBe(
-      "https://x.com/another/status/9876543210987654321",
+      "https://x.com/another/status/9876543210987654321"
     );
   });
 
   it("fetches real tweet content via oEmbed", async () => {
     const tree = await process(
-      '<img src="https://x.com/kepano/status/1882142872826442145" />',
+      '<img src="https://x.com/kepano/status/1882142872826442145" />'
     );
 
     const img = findFirstElement(tree, "img");
@@ -157,7 +157,7 @@ describe("rehype-obsidian", () => {
       '<ul class="contains-task-list">' +
         '<li class="task-list-item"><input type="checkbox" disabled> unchecked</li>' +
         '<li class="task-list-item"><input type="checkbox" checked disabled> checked with x</li>' +
-        "</ul>",
+        "</ul>"
     );
 
     const items = findElements(tree, "li");
@@ -180,7 +180,7 @@ describe("rehype-obsidian", () => {
         '<li class="task-list-item" data-task-char="?"><input type="checkbox" checked disabled> question</li>' +
         '<li class="task-list-item" data-task-char="/"><input type="checkbox" checked disabled> partial</li>' +
         '<li class="task-list-item" data-task-char=" "><input type="checkbox" disabled> unchecked custom</li>' +
-        "</ul>",
+        "</ul>"
     );
 
     const items = findElements(tree, "li");
@@ -196,7 +196,7 @@ describe("rehype-obsidian", () => {
 
   it("adds mermaid expand controls", async () => {
     const tree = await process(
-      '<pre><code class="mermaid">graph LR</code></pre>',
+      '<pre><code class="mermaid">graph LR</code></pre>'
     );
     const pre = findFirstElement(tree, "pre");
 
@@ -212,13 +212,13 @@ describe("rehype-obsidian", () => {
 
   it("marks obsidian:// links", async () => {
     const tree = await process(
-      '<a href="obsidian://open?vault=Test&file=note">Open</a>',
+      '<a href="obsidian://open?vault=Test&file=note">Open</a>'
     );
     const link = findFirstElement(tree, "a");
 
     expect(link?.properties?.href).toBe("obsidian://open?vault=Test&file=note");
     expect(link?.properties?.dataObsidianUri).toBe(
-      "obsidian://open?vault=Test&file=note",
+      "obsidian://open?vault=Test&file=note"
     );
     expect(getClasses(link!)).toContain("obsidian-uri");
   });
@@ -236,7 +236,7 @@ describe("rehype-obsidian", () => {
         tweetEmbed: false,
         checkbox: false,
         obsidianUri: false,
-      },
+      }
     );
 
     const paragraph = findFirstElement(tree, "p");
@@ -249,7 +249,7 @@ describe("rehype-obsidian", () => {
     expect(paragraph?.properties?.id).toBeUndefined();
     if (!paragraph) throw new Error("Paragraph not found");
     const textChild = paragraph.children.find(
-      (child: ElementContent): child is Text => child.type === "text",
+      (child: ElementContent): child is Text => child.type === "text"
     );
     expect(textChild?.value).toBe("Keep ^blockId");
     expect(img).toBeDefined();
@@ -263,7 +263,7 @@ describe("rehype-obsidian", () => {
 
   it("applies multiple transforms in one pass", async () => {
     const tree = await process(
-      '<p>Task ^task</p><input type="checkbox" checked disabled /><pre><code class="mermaid">graph LR</code></pre><img src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />',
+      '<p>Task ^task</p><input type="checkbox" checked disabled /><pre><code class="mermaid">graph LR</code></pre><img src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />'
     );
 
     const paragraph = findFirstElement(tree, "p");
@@ -275,7 +275,7 @@ describe("rehype-obsidian", () => {
     expect(input?.properties?.disabled).toBe(false);
     expect(input?.properties?.className).toEqual(["checkbox-toggle"]);
     expect(iframe?.properties?.src).toBe(
-      "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      "https://www.youtube.com/embed/dQw4w9WgXcQ"
     );
     expect(pre?.children.length).toBe(3);
   });
@@ -284,7 +284,7 @@ describe("rehype-obsidian", () => {
 describe("stripComments", () => {
   it("removes the empty comment marker remark-obsidian leaves behind", async () => {
     const tree = await process(
-      "<p>before</p><obsidian-comment></obsidian-comment><p>after</p>",
+      "<p>before</p><obsidian-comment></obsidian-comment><p>after</p>"
     );
     expect(findFirstElement(tree, "obsidian-comment")).toBeUndefined();
     expect(findFirstElement(tree, "p")).toBeDefined();
@@ -292,7 +292,7 @@ describe("stripComments", () => {
 
   it("removes several markers, including one nested in a paragraph", async () => {
     const tree = await process(
-      "<p>a<obsidian-comment></obsidian-comment>b</p><obsidian-comment></obsidian-comment>",
+      "<p>a<obsidian-comment></obsidian-comment>b</p><obsidian-comment></obsidian-comment>"
     );
     expect(findFirstElement(tree, "obsidian-comment")).toBeUndefined();
   });
@@ -302,5 +302,44 @@ describe("stripComments", () => {
       stripComments: false,
     });
     expect(findFirstElement(tree, "obsidian-comment")).toBeDefined();
+  });
+});
+
+describe("bareFootnotes", () => {
+  const REF =
+    '<p>a<sup><a href="#user-content-fn-cell" id="user-content-fnref-cell" data-footnote-ref>1</a></sup></p>';
+  const text = (tree: Root): string => {
+    let out = "";
+    const walk = (node: { type: string; children?: unknown[] }): void => {
+      if (node.type === "text") out += (node as unknown as Text).value;
+      for (const child of node.children ?? []) {
+        walk(child as { type: string; children?: unknown[] });
+      }
+    };
+    walk(tree);
+    return out;
+  };
+
+  it("bares a reference whose target was never emitted", async () => {
+    const tree = await process(REF);
+    expect(findFirstElement(tree, "sup")).toBeUndefined();
+    expect(text(tree)).toBe("acell");
+  });
+
+  it("shows the identifier, not the ordinal the renderer assigned", async () => {
+    const tree = await process(REF);
+    expect(text(tree)).not.toContain("1");
+  });
+
+  it("leaves a reference alone when its definition exists", async () => {
+    const tree = await process(
+      `${REF}<section class="footnotes"><li id="user-content-fn-cell">body</li></section>`
+    );
+    expect(findFirstElement(tree, "sup")).toBeDefined();
+  });
+
+  it("leaves them alone when disabled", async () => {
+    const tree = await process(REF, { bareFootnotes: false });
+    expect(findFirstElement(tree, "sup")).toBeDefined();
   });
 });

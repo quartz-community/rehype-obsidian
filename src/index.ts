@@ -1,5 +1,6 @@
 import type { Root } from "hast";
 
+import { bareFootnotes } from "./lib/bare-footnotes.js";
 import { blockReferences } from "./lib/block-references.js";
 import { checkbox } from "./lib/checkbox.js";
 import { mermaidExpand } from "./lib/mermaid-expand.js";
@@ -17,6 +18,8 @@ export interface RehypeObsidianOptions {
   obsidianUri?: boolean;
   /** Remove the empty `<obsidian-comment>` markers `remark-obsidian` leaves for kept `%%` comments. */
   stripComments?: boolean;
+  /** Render a footnote reference nothing defines as its bare label, as Obsidian does. */
+  bareFootnotes?: boolean;
 }
 
 const defaultOptions: Required<RehypeObsidianOptions> = {
@@ -27,6 +30,7 @@ const defaultOptions: Required<RehypeObsidianOptions> = {
   mermaid: true,
   obsidianUri: true,
   stripComments: true,
+  bareFootnotes: true,
 };
 
 export default function rehypeObsidian(userOpts?: RehypeObsidianOptions) {
@@ -39,10 +43,12 @@ export default function rehypeObsidian(userOpts?: RehypeObsidianOptions) {
     if (opts.mermaid) mermaidExpand(tree);
     if (opts.obsidianUri) obsidianUri(tree);
     if (opts.stripComments) stripComments(tree);
+    if (opts.bareFootnotes) bareFootnotes(tree);
   };
 }
 
 export {
+  bareFootnotes,
   blockReferences,
   youTubeEmbed,
   tweetEmbed,
