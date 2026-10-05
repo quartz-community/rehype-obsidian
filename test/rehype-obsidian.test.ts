@@ -365,3 +365,113 @@ describe("bareFootnotes", () => {
     ]);
   });
 });
+
+/**
+ * The rendering half of Obsidian 1.14's coloured highlights. `remark-obsidian`
+ * keeps the emoji in the tree deliberately, so the strip has to happen here --
+ * every expectation below is read from Obsidian's own recorded HTML.
+ */
+describe("coloured highlights", () => {
+  const markOf = async (html: string, opts?: RehypeObsidianOptions) => {
+    const mark = findFirstElement(await process(html, opts), "mark");
+    return {
+      colour: mark?.properties?.dataHighlight,
+      text: (mark?.children?.[0] as Text | undefined)?.value,
+    };
+  };
+
+  it("colours a highlight from its leading marker and drops it", async () => {
+    // `==🔴 text==` renders as `<mark data-highlight="red"> text</mark>`: the
+    // separating space survives, because the marker is removed and not the gap.
+    expect(await markOf("<mark>\u{1F534} text</mark>")).toEqual({
+      colour: "red",
+      text: " text",
+    });
+  });
+
+  it("maps all twelve markers onto six colours", async () => {
+    const circles = [
+      "\u{1F534}",
+      "\u{1F7E0}",
+      "\u{1F7E1}",
+      "\u{1F7E2}",
+      "\u{1F535}",
+      "\u{1F7E3}",
+    ];
+    const squares = [
+      "\u{1F7E5}",
+      "\u{1F7E7}",
+      "\u{1F7E8}",
+      "\u{1F7E9}",
+      "\u{1F7E6}",
+      "\u{1F7EA}",
+    ];
+    const expected = ["red", "orange", "yellow", "green", "blue", "purple"];
+    for (const [index, colour] of expected.entries()) {
+      expect(await markOf(`<mark>${circles[index]} x</mark>`)).toEqual({
+        colour,
+        text: " x",
+      });
+      expect(await markOf(`<mark>${squares[index]} x</mark>`)).toEqual({
+        colour,
+        text: " x",
+      });
+    }
+  });
+
+  it("strips by codepoint, orphaning a variation selector as Obsidian does", async () => {
+    // A grapheme-aware strip would swallow the selector too, which Obsidian keeps.
+    expect(await markOf("<mark>\u{1F534}\uFE0F text</mark>")).toEqual({
+      colour: "red",
+      text: "\uFE0F text",
+    });
+  });
+
+  it("keeps a marker that is not leading, and the second of two", async () => {
+    expect(await markOf("<mark>te\u{1F534}xt</mark>")).toEqual({
+      colour: undefined,
+      text: "te\u{1F534}xt",
+    });
+    // Obsidian renders `==🔴 a ==🟢 b==` with the inner square still text.
+    expect(await markOf("<mark>\u{1F534} a ==\u{1F7E2} b</mark>")).toEqual({
+      colour: "red",
+      text: " a ==\u{1F7E2} b",
+    });
+  });
+
+  it("leaves a pictograph that is not one of the twelve", async () => {
+    for (const other of [
+      "\u{1F7E4}",
+      "\u26AB",
+      "\u26AA",
+      "\u{1F7EB}",
+      "\u2B1B",
+      "\u2B1C",
+    ]) {
+      expect(await markOf(`<mark>${other} x</mark>`)).toEqual({
+        colour: undefined,
+        text: `${other} x`,
+      });
+    }
+  });
+
+  it("keeps whatever whitespace followed the marker", async () => {
+    expect(await markOf("<mark>\u{1F534}\ttext</mark>")).toEqual({
+      colour: "red",
+      text: "\ttext",
+    });
+    expect(await markOf("<mark>\u{1F534}text</mark>")).toEqual({
+      colour: "red",
+      text: "text",
+    });
+  });
+
+  it("can be turned off", async () => {
+    expect(
+      await markOf("<mark>\u{1F534} text</mark>", { colouredHighlights: false })
+    ).toEqual({
+      colour: undefined,
+      text: "\u{1F534} text",
+    });
+  });
+});
