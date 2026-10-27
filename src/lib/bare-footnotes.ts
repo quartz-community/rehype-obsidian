@@ -59,7 +59,51 @@ export const bareFootnotes = (tree: Root): void => {
     return index;
   });
 
+  bareSplitAnchors(tree, present);
   renumber(tree);
+};
+
+/**
+ * Bare a reference whose marker an HTML parser split out of a link.
+ *
+ * A reference inside link text (`[link [^x]](url)`) renders as an anchor inside
+ * an anchor, which HTML cannot nest. When `rehype-raw` re-parses the tree on the
+ * way here, the parser closes the link at the inner `<a>`: the link keeps an
+ * empty `<sup>` as its last child and the reference's anchor follows it as a
+ * sibling, outside any `sup`, so the pass above never sees it. Obsidian renders
+ * a defined reference split the same way, which is left alone. An undefined one
+ * shows its bare label where the reference stood, so the label takes the empty
+ * `sup`'s place inside the link -- where it lands without `rehype-raw` -- and the
+ * stray anchor goes.
+ */
+const bareSplitAnchors = (tree: Root, present: ReadonlySet<string>): void => {
+  visit(tree, "element", (node: Element, index, parent) => {
+    if (!parent || typeof index !== "number") return;
+    if (!isFootnoteAnchor(node)) return;
+    if (parent.type === "element" && parent.tagName === "sup") return;
+    const href = node.properties?.href;
+    if (typeof href !== "string" || !href.startsWith("#")) return;
+    if (present.has(href.slice(1))) return;
+
+    const bare: Text = { type: "text", value: identifierFrom(href) };
+    const link = parent.children[index - 1];
+    const last =
+      link?.type === "element" && link.tagName === "a"
+        ? link.children[link.children.length - 1]
+        : undefined;
+    if (
+      link?.type === "element" &&
+      last?.type === "element" &&
+      last.tagName === "sup" &&
+      last.children.length === 0
+    ) {
+      link.children.splice(link.children.length - 1, 1, bare);
+      parent.children.splice(index, 1);
+      return index;
+    }
+    parent.children.splice(index, 1, bare);
+    return index;
+  });
 };
 
 /**

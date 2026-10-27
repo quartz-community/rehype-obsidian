@@ -20,3 +20,5 @@ inner `🟢` of `==🔴 a ==🟢 b==` stays text; and whatever whitespace follow
 marker survives.
 
 Now required rather than forward-looking: 1.14.4 is the current public release.
+
+New `colouredHighlights` option, on by default.

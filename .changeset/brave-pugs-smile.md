@@ -23,4 +23,9 @@ undefined and `[^b]` defined, the surviving marker rendered as `2` where
 Obsidian shows `1`. Numbering by first appearance of each target restores that
 and keeps repeated references to one definition sharing a number.
 
+A reference inside link text (`[link [^x]](url)`) is bared too. Its marker
+nests an anchor inside the link, which `rehype-raw`'s HTML re-parse splits out
+beside it, past the reach of a `sup`-based match; the bare label now takes its
+place inside the link, as it does without `rehype-raw`.
+
 New `bareFootnotes` option, on by default.

@@ -355,6 +355,27 @@ describe("bareFootnotes", () => {
     expect(text(tree)).toContain("see acell and 1");
   });
 
+  // `[link [^z]](url)`: the reference's anchor nests inside the link, and the
+  // HTML parser splits it out, leaving an empty `sup` in the link and the anchor
+  // beside it. `rehype-raw` does this in Quartz's chain; `rehype-parse` does the
+  // same to this input.
+  const NESTED = (target: string) =>
+    `<p>a <a href="https://example.com">link <sup><a href="#user-content-fn-${target}" data-footnote-ref>1</a></sup></a> b</p>`;
+
+  it("bares an undefined reference split out of a link, inside the link", async () => {
+    const tree = await process(NESTED("z"));
+    expect(findElements(tree, "a").length).toBe(1);
+    expect(findFirstElement(tree, "sup")).toBeUndefined();
+    expect(text(findFirstElement(tree, "a") as never)).toBe("link z");
+    expect(text(tree)).toBe("a link z b");
+  });
+
+  it("leaves a defined reference split out of a link as Obsidian renders it", async () => {
+    const tree = await process(`${NESTED("z")}${section("z")}`);
+    expect(findElements(tree, "a").length).toBe(2);
+    expect(findFirstElement(tree, "sup")).toBeDefined();
+  });
+
   it("keeps repeated references to one definition on a shared number", async () => {
     const tree = await process(
       `<p>${REF} ${defined("b", "2")} ${defined("b", "2")}</p>${section("b")}`
