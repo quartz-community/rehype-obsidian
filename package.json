@@ -1,6 +1,6 @@
 {
   "name": "@quartz-community/rehype-obsidian",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Rehype plugin for Obsidian-flavored HTML transforms (block references, YouTube embeds, checkboxes, mermaid).",
   "type": "module",
   "license": "MIT",
