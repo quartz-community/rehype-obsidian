@@ -133,6 +133,17 @@ describe("rehype-obsidian", () => {
     }
   });
 
+  it("drops the line break after display math in a paragraph", async () => {
+    const tree = await process(
+      '<p>a <code class="language-math math-display">y^2</code><br>\nb</p>'
+    );
+    expect(findElements(tree, "br")).toHaveLength(0);
+    const kept = await process(
+      '<p>a <code class="language-math math-inline">y</code><br>\nb</p>'
+    );
+    expect(findElements(kept, "br")).toHaveLength(1);
+  });
+
   it("replaces YouTube images with embeds", async () => {
     const tree = await process(
       '<img src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />'

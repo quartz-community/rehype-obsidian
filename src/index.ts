@@ -4,6 +4,7 @@ import { bareFootnotes } from "./lib/bare-footnotes.js";
 import { blockReferences } from "./lib/block-references.js";
 import { checkbox } from "./lib/checkbox.js";
 import { colouredHighlights } from "./lib/coloured-highlights.js";
+import { displayMathBreaks } from "./lib/display-math-breaks.js";
 import { mermaidExpand } from "./lib/mermaid-expand.js";
 import { obsidianUri } from "./lib/obsidian-uri.js";
 import { stripComments } from "./lib/strip-comments.js";
@@ -27,6 +28,8 @@ export interface RehypeObsidianOptions {
    * strip belongs here, where it becomes output.
    */
   colouredHighlights?: boolean;
+  /** Drop the `<br>` after display math in a paragraph, which Obsidian does not render. */
+  displayMathBreaks?: boolean;
 }
 
 const defaultOptions: Required<RehypeObsidianOptions> = {
@@ -39,6 +42,7 @@ const defaultOptions: Required<RehypeObsidianOptions> = {
   stripComments: true,
   bareFootnotes: true,
   colouredHighlights: true,
+  displayMathBreaks: true,
 };
 
 export default function rehypeObsidian(userOpts?: RehypeObsidianOptions) {
@@ -53,12 +57,14 @@ export default function rehypeObsidian(userOpts?: RehypeObsidianOptions) {
     if (opts.stripComments) stripComments(tree);
     if (opts.bareFootnotes) bareFootnotes(tree);
     if (opts.colouredHighlights) colouredHighlights(tree);
+    if (opts.displayMathBreaks) displayMathBreaks(tree);
   };
 }
 
 export {
   bareFootnotes,
   colouredHighlights,
+  displayMathBreaks,
   blockReferences,
   youTubeEmbed,
   tweetEmbed,
