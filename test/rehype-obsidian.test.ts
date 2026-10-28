@@ -84,6 +84,55 @@ describe("rehype-obsidian", () => {
     expect(paragraph?.properties?.id).toBe("cb-a34b78b4icqt6zx6xbdah6ct");
   });
 
+  // Recorded live against Obsidian 1.15.0: every inline text ending in an identifier is
+  // stripped, and the last one names the block.
+  it("strips a block reference inside emphasis", async () => {
+    const tree = await process("<p>x <strong>^blk</strong> y</p>");
+    const paragraph = findFirstElement(tree, "p");
+    expect(paragraph?.properties?.id).toBe("blk");
+    expect(findFirstElement(tree, "strong")?.children).toEqual([]);
+  });
+
+  it("names the block by the last of several block references", async () => {
+    const tree = await process("<p>x <strong>^blk</strong> y ^two</p>");
+    const paragraph = findFirstElement(tree, "p");
+    expect(paragraph?.properties?.id).toBe("two");
+    expect(findFirstElement(tree, "strong")?.children).toEqual([]);
+    const texts = paragraph?.children.filter(
+      (child): child is Text => child.type === "text"
+    );
+    expect(texts?.map((t) => t.value).join("|")).toBe("x | y");
+  });
+
+  it("keeps a trailing block reference on its own paragraph", async () => {
+    const tree = await process(
+      '<ul><li>a</li></ul><p>x <a href="u">l</a> ^blk</p>'
+    );
+    expect(findFirstElement(tree, "p")?.properties?.id).toBe("blk");
+    expect(findFirstElement(tree, "ul")?.properties?.id).toBeUndefined();
+  });
+
+  it("gives a table cell's block reference to the table", async () => {
+    const tree = await process(
+      "<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>a ^blk</td></tr></tbody></table>"
+    );
+    expect(findFirstElement(tree, "table")?.properties?.id).toBe("blk");
+    const cell = findFirstElement(tree, "td");
+    expect((cell?.children[0] as Text).value).toBe("a ");
+  });
+
+  it("reads only Obsidian's block reference characters", async () => {
+    for (const html of [
+      "<p>x e^x</p>",
+      "<p>x ^a_b</p>",
+      "<p>x ^a.b</p>",
+      "<p>x <code>^blk</code></p>",
+    ]) {
+      const tree = await process(html);
+      expect(findFirstElement(tree, "p")?.properties?.id, html).toBeUndefined();
+    }
+  });
+
   it("replaces YouTube images with embeds", async () => {
     const tree = await process(
       '<img src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />'

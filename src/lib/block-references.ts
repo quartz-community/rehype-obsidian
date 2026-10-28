@@ -1,9 +1,42 @@
 import type { Element, Parent, Root, Text } from "hast";
 import { visit } from "unist-util-visit";
 
-const blockReferenceRegex = /\^([^\s^]+)$/;
+/**
+ * Obsidian's identifier: `^` and letters, digits or `-`, ending the text, at its start or after
+ * whitespace. `e^x`, `^a_b` and `^a.b` are text (recorded live, Obsidian 1.15.0).
+ */
+const blockReferenceRegex = /(?<=^|\s)\^([A-Za-z0-9-]+)$/;
 const inlineTagTypes = new Set(["p", "li"]);
 const blockTagTypes = new Set(["blockquote"]);
+const cellTagTypes = new Set(["td", "th"]);
+/** Blocks inside a block, read on their own visit rather than as its inline content. */
+const nestedBlockTypes = new Set([
+  "p",
+  "ul",
+  "ol",
+  "li",
+  "blockquote",
+  "table",
+  "div",
+  "section",
+  "pre",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+]);
+/** Elements whose text is never an identifier: code, and rendered math. */
+const shieldTypes = new Set([
+  "code",
+  "pre",
+  "math",
+  "svg",
+  "annotation",
+  "script",
+  "style",
+]);
 
 type VFileData = {
   blocks: Record<string, Element>;
@@ -51,6 +84,59 @@ const applyBlockId = (
   blocks[slugged] = node;
 };
 
+const isShield = (node: Element): boolean => {
+  if (shieldTypes.has(node.tagName)) return true;
+  const className: unknown = node.properties?.className;
+  const classes: string[] = Array.isArray(className)
+    ? className.map(String)
+    : typeof className === "string"
+      ? className.split(/\s+/)
+      : [];
+  return classes.some((name) => /^(?:katex|math|MathJax)/.test(name));
+};
+
+/**
+ * Strip an identifier from every inline text node under `node` that ends in one, except
+ * `skip`, and return the last identifier found.
+ *
+ * Obsidian strips each one, not only the block's last: `x **^blk** y` renders
+ * `x <strong></strong> y`, and `x **^blk** ^two` empties the strong and drops `^two`, while only
+ * the last (`two`) names the block. The whitespace before the `^` stays.
+ */
+const stripInlineIds = (
+  node: Element,
+  skip?: Text,
+): string | undefined => {
+  let last: string | undefined;
+  const emptied = new Set<Text>();
+  const walk = (parent: Element) => {
+    for (const child of parent.children) {
+      if (isText(child)) {
+        if (child === skip) continue;
+        const match = child.value.match(blockReferenceRegex);
+        if (!match) continue;
+        child.value = child.value.slice(0, match.index);
+        last = match[1];
+        if (child.value === "") emptied.add(child);
+      } else if (
+        isElement(child) &&
+        !nestedBlockTypes.has(child.tagName) &&
+        !isShield(child)
+      ) {
+        walk(child);
+      }
+    }
+    // An emptied text goes, so `**^blk**` leaves an empty `strong`, as Obsidian renders it.
+    if (emptied.size > 0) {
+      parent.children = parent.children.filter(
+        (child) => !isText(child) || !emptied.has(child),
+      );
+    }
+  };
+  walk(node);
+  return last;
+};
+
 export const blockReferences = (tree: Root, file: VFileLike) => {
   const data = ensureFileData(file);
   const blocks = data.blocks;
@@ -79,21 +165,43 @@ export const blockReferences = (tree: Root, file: VFileLike) => {
         return;
       }
 
+      // A table cell's identifier names the table, as Obsidian registers it.
+      if (node.tagName === "table") {
+        let last: string | undefined;
+        visit(node, "element", (cell: Element) => {
+          if (!cellTagTypes.has(cell.tagName)) return;
+          last = stripInlineIds(cell) ?? last;
+        });
+        if (last) applyBlockId(node, last, blocks);
+        return;
+      }
+
       if (!inlineTagTypes.has(node.tagName)) return;
 
       const children = node.children;
       if (!children || children.length === 0) return;
 
       const lastChild = children[children.length - 1];
-      if (!isText(lastChild)) return;
-
-      const match = lastChild.value.match(blockReferenceRegex);
-      if (!match) return;
+      const tail = isText(lastChild) ? lastChild : undefined;
+      // Identifiers inside wrappers and earlier text first; the block's own last text, handled
+      // below, comes last and so wins when it holds one.
+      const inner = stripInlineIds(node, tail);
+      const match = tail?.value.match(blockReferenceRegex);
+      if (!tail || !match) {
+        if (inner) applyBlockId(node, inner, blocks);
+        return;
+      }
 
       const blockId = match[1];
-      const stripped = lastChild.value
-        .replace(blockReferenceRegex, "")
-        .trimEnd();
+      const stripped = tail.value.replace(blockReferenceRegex, "").trimEnd();
+
+      // A paragraph that held nothing else names the block before it. One with more in it,
+      // `x **^blk** ^two`, keeps the identifier for itself.
+      if (stripped.length === 0 && children.length > 1) {
+        children.pop();
+        applyBlockId(node, blockId, blocks);
+        return;
+      }
 
       if (stripped.length === 0) {
         children.pop();
@@ -112,7 +220,7 @@ export const blockReferences = (tree: Root, file: VFileLike) => {
         return;
       }
 
-      lastChild.value = stripped;
+      tail.value = stripped;
       applyBlockId(node, blockId, blocks);
     },
   );
