@@ -121,6 +121,29 @@ describe("rehype-obsidian", () => {
     expect((cell?.children[0] as Text).value).toBe("a ");
   });
 
+  // Recorded live against Obsidian 1.15.0: only text ending its wrapper or cell loses one.
+  it("keeps a block reference that does not end its wrapper or cell", async () => {
+    const cases: Array<[string, string, string]> = [
+      [
+        '<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>^blk<a href="w">w</a></td></tr></tbody></table>',
+        "td",
+        "^blk",
+      ],
+      ["<p><mark>a ^blk <code>c</code></mark></p>", "mark", "a ^blk "],
+    ];
+    for (const [html, tag, text] of cases) {
+      const tree = await process(html);
+      expect(
+        (findFirstElement(tree, tag)?.children[0] as Text).value,
+        html
+      ).toBe(text);
+    }
+    const stripped = await process("<p><mark>a ^blk</mark> b</p>");
+    expect(
+      (findFirstElement(stripped, "mark")?.children[0] as Text).value
+    ).toBe("a ");
+  });
+
   it("reads only Obsidian's block reference characters", async () => {
     for (const html of [
       "<p>x e^x</p>",

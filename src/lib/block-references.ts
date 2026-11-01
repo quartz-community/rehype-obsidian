@@ -96,8 +96,8 @@ const isShield = (node: Element): boolean => {
 };
 
 /**
- * Strip an identifier from every inline text node under `node` that ends in one, except
- * `skip`, and return the last identifier found.
+ * Strip an identifier from every inline text node under `node` that ends in one and ends its
+ * parent, except `skip`, and return the last identifier found.
  *
  * Obsidian strips each one, not only the block's last: `x **^blk** y` renders
  * `x <strong></strong> y`, and `x **^blk** ^two` empties the strong and drops `^two`, while only
@@ -113,6 +113,10 @@ const stripInlineIds = (
     for (const child of parent.children) {
       if (isText(child)) {
         if (child === skip) continue;
+        // Only text ending its parent: `| ^blk[[w]] |`, `| x ^blk *y* |` and
+        // `==a ^blk [[w]]==` keep their `^blk`, where `==a ^blk== b` strips it (Obsidian
+        // 1.15.0, found by remark-obsidian's differential fuzz).
+        if (parent.children[parent.children.length - 1] !== child) continue;
         const match = child.value.match(blockReferenceRegex);
         if (!match) continue;
         child.value = child.value.slice(0, match.index);
