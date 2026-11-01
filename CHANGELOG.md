@@ -1,3 +1,11 @@
+## 1.2.1
+
+### Patch Changes
+
+- 4e21fb5: A block reference is stripped only from text that ends its wrapper or table cell, as Obsidian
+  renders it: `| ^blk[[w]] |` and `==a ^blk [[w]]==` keep their `^blk`, while `==a ^blk== b`
+  still strips it.
+
 ## 1.2.0
 
 ### Minor Changes
