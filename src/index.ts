@@ -1,7 +1,7 @@
 import type { Root } from "hast";
 
 import { bareFootnotes } from "./lib/bare-footnotes.js";
-import { blockReferences } from "./lib/block-references.js";
+import { blockReferences, WIKILINK_PROPERTY } from "./lib/block-references.js";
 import { checkbox } from "./lib/checkbox.js";
 import { colouredHighlights } from "./lib/coloured-highlights.js";
 import { displayMathBreaks } from "./lib/display-math-breaks.js";
@@ -72,4 +72,5 @@ export {
   mermaidExpand,
   obsidianUri,
   stripComments,
+  WIKILINK_PROPERTY,
 };

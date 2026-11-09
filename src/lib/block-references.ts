@@ -74,7 +74,7 @@ const ensureFileData = (file: VFileLike): VFileData => {
 const applyBlockId = (
   node: Element,
   blockId: string,
-  blocks: Record<string, Element>,
+  blocks: Record<string, Element>
 ) => {
   if (!node.properties) {
     node.properties = {};
@@ -84,14 +84,30 @@ const applyBlockId = (
   blocks[slugged] = node;
 };
 
+/**
+ * A link rendered from a wikilink carries this property (`data-wikilink`). Its text is the link's
+ * target or alias, never a block identifier: Obsidian renders `[[n#^id]]` as `n > ^id` and
+ * `[[n|a ^id]]` as `a ^id`, and gives the paragraph no identifier. A Markdown link's text is
+ * read like any other: `[a ^id](n)` renders `a ` and names the paragraph (Obsidian 1.15.0).
+ */
+export const WIKILINK_PROPERTY = "dataWikilink";
+
 const isShield = (node: Element): boolean => {
   if (shieldTypes.has(node.tagName)) return true;
+  const wikilink: unknown = node.properties?.[WIKILINK_PROPERTY];
+  if (
+    node.tagName === "a" &&
+    wikilink !== undefined &&
+    wikilink !== null &&
+    wikilink !== false
+  )
+    return true;
   const className: unknown = node.properties?.className;
   const classes: string[] = Array.isArray(className)
     ? className.map(String)
     : typeof className === "string"
-      ? className.split(/\s+/)
-      : [];
+    ? className.split(/\s+/)
+    : [];
   return classes.some((name) => /^(?:katex|math|MathJax)/.test(name));
 };
 
@@ -103,10 +119,7 @@ const isShield = (node: Element): boolean => {
  * `x <strong></strong> y`, and `x **^blk** ^two` empties the strong and drops `^two`, while only
  * the last (`two`) names the block. The whitespace before the `^` stays.
  */
-const stripInlineIds = (
-  node: Element,
-  skip?: Text,
-): string | undefined => {
+const stripInlineIds = (node: Element, skip?: Text): string | undefined => {
   let last: string | undefined;
   const emptied = new Set<Text>();
   const walk = (parent: Element) => {
@@ -133,7 +146,7 @@ const stripInlineIds = (
     // An emptied text goes, so `**^blk**` leaves an empty `strong`, as Obsidian renders it.
     if (emptied.size > 0) {
       parent.children = parent.children.filter(
-        (child) => !isText(child) || !emptied.has(child),
+        (child) => !isText(child) || !emptied.has(child)
       );
     }
   };
@@ -226,7 +239,7 @@ export const blockReferences = (tree: Root, file: VFileLike) => {
 
       tail.value = stripped;
       applyBlockId(node, blockId, blocks);
-    },
+    }
   );
 
   data.htmlAst = tree;

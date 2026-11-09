@@ -144,6 +144,30 @@ describe("rehype-obsidian", () => {
     ).toBe("a ");
   });
 
+  // Recorded live against Obsidian 1.15.0: `[[n#^id]]` renders `n > ^id`, `[[n|a ^id]]` renders
+  // `a ^id`, and neither names the paragraph; `[a ^id](n)` renders `a ` and names it.
+  it("keeps a block reference in a wikilink's text, not in a Markdown link's", async () => {
+    for (const [html, text] of [
+      ['<p>16 <a href="n#^xyz" data-wikilink>n > ^xyz</a></p>', "n > ^xyz"],
+      ['<p>19 <a href="n" data-wikilink="">al ^sss</a></p>', "al ^sss"],
+    ]) {
+      const tree = await process(html);
+      expect(findFirstElement(tree, "p")?.properties?.id, html).toBeUndefined();
+      expect((findFirstElement(tree, "a")?.children[0] as Text).value).toBe(
+        text
+      );
+    }
+    const markdown = await process('<p>7 <a href="n">text ^abc</a></p>');
+    expect(findFirstElement(markdown, "p")?.properties?.id).toBe("abc");
+    expect((findFirstElement(markdown, "a")?.children[0] as Text).value).toBe(
+      "text "
+    );
+    const trailing = await process(
+      '<p>18 text <a href="n" data-wikilink>n</a> ^rrr</p>'
+    );
+    expect(findFirstElement(trailing, "p")?.properties?.id).toBe("rrr");
+  });
+
   it("reads only Obsidian's block reference characters", async () => {
     for (const html of [
       "<p>x e^x</p>",
@@ -572,7 +596,9 @@ describe("coloured highlights", () => {
 
   it("can be turned off", async () => {
     expect(
-      await markOf("<mark>\u{1F534} text</mark>", { colouredHighlights: false })
+      await markOf("<mark>\u{1F534} text</mark>", {
+        colouredHighlights: false,
+      })
     ).toEqual({
       colour: undefined,
       text: "\u{1F534} text",
