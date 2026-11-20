@@ -18,7 +18,8 @@ export const checkbox = (tree: Root) => {
       ...properties,
       checked,
       disabled: false,
-      className: ["checkbox-toggle"],
+      // `task-list-item-checkbox` is Obsidian's class, so Obsidian themes style it.
+      className: ["checkbox-toggle", "task-list-item-checkbox"],
     };
   });
 

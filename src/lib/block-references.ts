@@ -8,6 +8,12 @@ import { visit } from "unist-util-visit";
 const blockReferenceRegex = /(?<=^|\s)\^([A-Za-z0-9-]+)$/;
 const inlineTagTypes = new Set(["p", "li"]);
 const blockTagTypes = new Set(["blockquote"]);
+/** Callouts render as <div class="callout">, like in Obsidian; they are blocks too. */
+const isBlockElement = (node: Element) =>
+  blockTagTypes.has(node.tagName) ||
+  (node.tagName === "div" &&
+    Array.isArray(node.properties?.className) &&
+    (node.properties.className as unknown[]).includes("callout"));
 const cellTagTypes = new Set(["td", "th"]);
 /** Blocks inside a block, read on their own visit rather than as its inline content. */
 const nestedBlockTypes = new Set([
@@ -74,7 +80,7 @@ const ensureFileData = (file: VFileLike): VFileData => {
 const applyBlockId = (
   node: Element,
   blockId: string,
-  blocks: Record<string, Element>
+  blocks: Record<string, Element>,
 ) => {
   if (!node.properties) {
     node.properties = {};
@@ -106,8 +112,8 @@ const isShield = (node: Element): boolean => {
   const classes: string[] = Array.isArray(className)
     ? className.map(String)
     : typeof className === "string"
-    ? className.split(/\s+/)
-    : [];
+      ? className.split(/\s+/)
+      : [];
   return classes.some((name) => /^(?:katex|math|MathJax)/.test(name));
 };
 
@@ -146,7 +152,7 @@ const stripInlineIds = (node: Element, skip?: Text): string | undefined => {
     // An emptied text goes, so `**^blk**` leaves an empty `strong`, as Obsidian renders it.
     if (emptied.size > 0) {
       parent.children = parent.children.filter(
-        (child) => !isText(child) || !emptied.has(child)
+        (child) => !isText(child) || !emptied.has(child),
       );
     }
   };
@@ -164,7 +170,7 @@ export const blockReferences = (tree: Root, file: VFileLike) => {
     (node: Element, index: number | undefined, parent: Parent | undefined) => {
       if (!isElement(node)) return;
 
-      if (blockTagTypes.has(node.tagName)) {
+      if (isBlockElement(node)) {
         if (!isParent(parent) || typeof index !== "number") return;
         const siblingIndex = index + 2;
         const sibling = parent.children[siblingIndex];
@@ -239,7 +245,7 @@ export const blockReferences = (tree: Root, file: VFileLike) => {
 
       tail.value = stripped;
       applyBlockId(node, blockId, blocks);
-    }
+    },
   );
 
   data.htmlAst = tree;
