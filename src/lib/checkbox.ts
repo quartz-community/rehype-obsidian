@@ -46,9 +46,10 @@ export const checkbox = (tree: Root) => {
     if (!checkboxInput) return;
 
     const checked = Boolean(checkboxInput.properties?.checked);
+    // Obsidian writes `data-task=""` for `- [ ]`, never a space; themes target that.
     const taskChar =
       typeof node.properties.dataTaskChar === "string"
-        ? node.properties.dataTaskChar
+        ? node.properties.dataTaskChar.trim()
         : checked
           ? "x"
           : "";

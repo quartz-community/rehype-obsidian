@@ -298,7 +298,8 @@ describe("rehype-obsidian", () => {
 
     expect(items[0].properties?.dataTask).toBe("?");
     expect(items[1].properties?.dataTask).toBe("/");
-    expect(items[2].properties?.dataTask).toBe(" ");
+    // As in Obsidian: an unchecked task is `data-task=""`.
+    expect(items[2].properties?.dataTask).toBe("");
     expect(items[0].properties?.dataTaskChar).toBeUndefined();
     expect(items[1].properties?.dataTaskChar).toBeUndefined();
     expect(items[2].properties?.dataTaskChar).toBeUndefined();
