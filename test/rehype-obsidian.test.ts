@@ -503,6 +503,41 @@ describe("bareFootnotes", () => {
   });
 });
 
+describe("list bullets", () => {
+  const LIST =
+    "<ul><li>a<ul><li>b</li></ul></li></ul>" +
+    '<ul class="contains-task-list"><li class="task-list-item"><input type="checkbox"> c</li></ul>' +
+    "<ol><li>d</li></ol>";
+
+  it("marks bullet lists and opens each item with a bullet, as Obsidian", async () => {
+    const tree = await process(LIST);
+    const uls = findElements(tree, "ul");
+    expect(uls.map((u) => u.properties?.className)).toEqual([
+      ["has-list-bullet"],
+      ["has-list-bullet"],
+      ["contains-task-list", "has-list-bullet"],
+    ]);
+    for (const li of findElements(tree, "li").slice(0, 3)) {
+      const first = li.children[0] as Element;
+      expect(first.tagName).toBe("span");
+      expect(first.properties?.className).toEqual(["list-bullet"]);
+    }
+    // Ordered lists have no bullets.
+    const ol = findFirstElement(tree, "ol")!;
+    expect((ol.children[0] as Element).children[0]).toMatchObject({
+      type: "text",
+      value: "d",
+    });
+  });
+
+  it("adds one bullet per item and can be turned off", async () => {
+    const tree = await process(LIST);
+    expect(findElements(tree, "span").length).toBe(3);
+    const off = await process(LIST, { listBullets: false });
+    expect(findElements(off, "span").length).toBe(0);
+  });
+});
+
 describe("footnote markup", () => {
   const textOf = (node: Element): string =>
     node.children.map((c) => (c.type === "text" ? c.value : "")).join("");
