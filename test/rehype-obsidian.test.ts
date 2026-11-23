@@ -503,6 +503,22 @@ describe("bareFootnotes", () => {
   });
 });
 
+describe("heading data", () => {
+  it("marks headings with their text, as Obsidian", async () => {
+    const tree = await process(
+      '<h2 id="x">Hello <em>world</em></h2><h3>Two</h3>',
+    );
+    expect(findFirstElement(tree, "h2")!.properties?.dataHeading).toBe(
+      "Hello world",
+    );
+    expect(findFirstElement(tree, "h3")!.properties?.dataHeading).toBe("Two");
+    const off = await process("<h2>A</h2>", { headingData: false });
+    expect(
+      findFirstElement(off, "h2")!.properties?.dataHeading,
+    ).toBeUndefined();
+  });
+});
+
 describe("list bullets", () => {
   const LIST =
     "<ul><li>a<ul><li>b</li></ul></li></ul>" +
