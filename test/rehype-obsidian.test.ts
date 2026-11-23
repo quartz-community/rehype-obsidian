@@ -465,6 +465,7 @@ describe("bareFootnotes", () => {
   it("closes the gap a bared marker leaves in the numbering", async () => {
     const tree = await process(
       `<p>see ${REF} and ${defined("b", "2")}</p>${section("b")}`,
+      { footnoteMarkup: false },
     );
     expect(text(tree)).toContain("see acell and 1");
   });
@@ -493,11 +494,55 @@ describe("bareFootnotes", () => {
   it("keeps repeated references to one definition on a shared number", async () => {
     const tree = await process(
       `<p>${REF} ${defined("b", "2")} ${defined("b", "2")}</p>${section("b")}`,
+      { footnoteMarkup: false },
     );
     expect(findElements(tree, "sup").map((s) => text(s as never))).toEqual([
       "1",
       "1",
     ]);
+  });
+});
+
+describe("footnote markup", () => {
+  const textOf = (node: Element): string =>
+    node.children.map((c) => (c.type === "text" ? c.value : "")).join("");
+  // What mdast-util-to-hast emits, through rehype-raw (boolean attributes as "").
+  const NOTE =
+    '<p>text<sup><a href="#user-content-fn-1" id="user-content-fnref-1" data-footnote-ref="">1</a></sup></p>' +
+    '<section data-footnotes="" class="footnotes"><h2 class="sr-only" id="footnote-label">Footnotes</h2>' +
+    '<ol><li id="user-content-fn-1"><p>body <a href="#user-content-fnref-1" data-footnote-backref="">↩</a></p></li></ol></section>';
+
+  it("uses Obsidian's classes and [n] labels", async () => {
+    const tree = await process(NOTE);
+    const sup = findFirstElement(tree, "sup")!;
+    expect(sup.properties?.className).toEqual(["footnote-ref"]);
+    const [ref, back] = findElements(tree, "a");
+    expect(ref!.properties?.className).toEqual(["footnote-link"]);
+    expect(textOf(ref!)).toBe("[1]");
+    expect(back!.properties?.className).toEqual([
+      "footnote-backref",
+      "footnote-link",
+    ]);
+  });
+
+  it("opens the footnotes with a rule, after the screen-reader heading", async () => {
+    const tree = await process(NOTE);
+    const section = findFirstElement(tree, "section")!;
+    const tags = section.children
+      .filter((c): c is Element => c.type === "element")
+      .map((c) => c.tagName);
+    expect(tags).toEqual(["h2", "hr", "ol"]);
+    // Idempotent.
+    const again = await process(NOTE.replace("</h2>", "</h2><hr>"));
+    expect(findElements(again, "hr").length).toBe(1);
+  });
+
+  it("leaves them alone when disabled", async () => {
+    const tree = await process(NOTE, { footnoteMarkup: false });
+    expect(
+      findFirstElement(tree, "sup")!.properties?.className,
+    ).toBeUndefined();
+    expect(findElements(tree, "hr").length).toBe(0);
   });
 });
 
