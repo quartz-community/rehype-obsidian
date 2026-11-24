@@ -321,6 +321,24 @@ describe("rehype-obsidian", () => {
     expect(container.properties?.role).toBe("dialog");
   });
 
+  it("wraps Pele's div.mermaid with the expand controls, once", async () => {
+    const tree = await process(
+      '<p>Before</p><div class="mermaid">graph LR</div><p>After</p>',
+    );
+    const wrapper = findFirstElement(tree, "div");
+
+    expect(getClasses(wrapper!)).toEqual(["mermaid-diagram"]);
+    const [button, diagram, container] = wrapper?.children as Element[];
+    expect(button.tagName).toBe("button");
+    expect(diagram.tagName).toBe("div");
+    expect(getClasses(diagram)).toEqual(["mermaid"]);
+    expect(diagram.children).toMatchObject([
+      { type: "text", value: "graph LR" },
+    ]);
+    expect(container.properties?.id).toBe("mermaid-container");
+    expect(wrapper?.children.length).toBe(3);
+  });
+
   it("marks obsidian:// links", async () => {
     const tree = await process(
       '<a href="obsidian://open?vault=Test&file=note">Open</a>',
