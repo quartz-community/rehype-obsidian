@@ -2,6 +2,7 @@ import type { Root } from "hast";
 
 import { bareFootnotes } from "./lib/bare-footnotes.js";
 import { blockReferences, WIKILINK_PROPERTY } from "./lib/block-references.js";
+import { blockWrappers, isBlockWrapper } from "./lib/block-wrappers.js";
 import { checkbox } from "./lib/checkbox.js";
 import { colouredHighlights } from "./lib/coloured-highlights.js";
 import { displayMathBreaks } from "./lib/display-math-breaks.js";
@@ -39,6 +40,11 @@ export interface RehypeObsidianOptions {
   colouredHighlights?: boolean;
   /** Drop the `<br>` after display math in a paragraph, which Obsidian does not render. */
   displayMathBreaks?: boolean;
+  /**
+   * Wrap each top-level block in the div Obsidian's reading view puts it in
+   * (`div.el-p > p`, `div.el-h2 > h2`), which themes space blocks with.
+   */
+  blockWrappers?: boolean;
 }
 
 const defaultOptions: Required<RehypeObsidianOptions> = {
@@ -55,6 +61,7 @@ const defaultOptions: Required<RehypeObsidianOptions> = {
   headingData: true,
   colouredHighlights: true,
   displayMathBreaks: true,
+  blockWrappers: true,
 };
 
 export default function rehypeObsidian(userOpts?: RehypeObsidianOptions) {
@@ -73,11 +80,15 @@ export default function rehypeObsidian(userOpts?: RehypeObsidianOptions) {
     if (opts.headingData) headingData(tree);
     if (opts.colouredHighlights) colouredHighlights(tree);
     if (opts.displayMathBreaks) displayMathBreaks(tree);
+    // Last: the steps above find blocks at the top level.
+    if (opts.blockWrappers) blockWrappers(tree);
   };
 }
 
 export {
   bareFootnotes,
+  blockWrappers,
+  isBlockWrapper,
   footnoteMarkup,
   headingData,
   listBullets,

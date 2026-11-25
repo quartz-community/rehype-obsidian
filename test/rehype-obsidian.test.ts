@@ -324,6 +324,7 @@ describe("rehype-obsidian", () => {
   it("wraps Pele's div.mermaid with the expand controls, once", async () => {
     const tree = await process(
       '<p>Before</p><div class="mermaid">graph LR</div><p>After</p>',
+      { blockWrappers: false },
     );
     const wrapper = findFirstElement(tree, "div");
 
@@ -724,5 +725,89 @@ describe("coloured highlights", () => {
       colour: undefined,
       text: "\u{1F534} text",
     });
+  });
+});
+
+describe("block wrappers", () => {
+  const wrappers = (tree: Root) =>
+    tree.children
+      .filter((c): c is Element => c.type === "element")
+      .map((w) => [
+        getClasses(w).join("."),
+        w.children
+          .filter((c): c is Element => c.type === "element")
+          .map((c) => c.tagName)
+          .join("+"),
+      ]);
+
+  it("wraps each top-level block in Obsidian's div.el-*", async () => {
+    const tree = await process(
+      "<h2>Title</h2>\n<p>Text</p>\n<ul><li>a</li></ul>\n<blockquote><p>q</p></blockquote>\n<table><tr><td>1</td></tr></table>\n<hr>",
+    );
+    expect(wrappers(tree)).toEqual([
+      ["el-h2", "h2"],
+      ["el-p", "p"],
+      ["el-ul", "ul"],
+      ["el-blockquote", "blockquote"],
+      ["el-table", "table"],
+      ["el-hr", "hr"],
+    ]);
+    // Whitespace between blocks stays between the wrappers.
+    expect(tree.children[1]).toMatchObject({ type: "text", value: "\n" });
+  });
+
+  it("leaves nested blocks unwrapped", async () => {
+    const tree = await process(
+      '<div class="callout" data-callout="note"><div class="callout-content"><p>Inside</p></div></div><blockquote><p>q</p></blockquote>',
+    );
+    expect(wrappers(tree)).toEqual([
+      ["el-div", "div"],
+      ["el-blockquote", "blockquote"],
+    ]);
+    // Only the top-level blocks: the callout's paragraph has none.
+    const content = findElements(tree, "div").find((d) =>
+      getClasses(d).includes("callout-content"),
+    );
+    expect((content?.children[0] as Element).tagName).toBe("p");
+  });
+
+  it("names Quartz's code, diagram, maths and footnote blocks as Obsidian does", async () => {
+    const tree = await process(
+      '<figure data-rehype-pretty-code-figure><pre><code>x</code></pre></figure><div class="mermaid">graph LR</div><span class="katex-display">m</span><section data-footnotes class="footnotes"><ol><li>f</li></ol></section>',
+    );
+    expect(wrappers(tree).map(([w]) => w)).toEqual([
+      "el-pre",
+      "el-pre",
+      "el-div",
+      "el-section",
+    ]);
+    // The diagram's expand controls are inside its wrapper.
+    expect(wrappers(tree)[1]?.[1]).toBe("div");
+  });
+
+  it("keeps a note embed in its paragraph's wrapper", async () => {
+    const tree = await process(
+      '<p></p><div class="transclude internal-embed markdown-embed"><a href="x" class="transclude-inner">x</a></div><p>After</p>',
+    );
+    expect(wrappers(tree)).toEqual([
+      ["el-p", "p+div"],
+      ["el-p", "p"],
+    ]);
+  });
+
+  it("wraps once", async () => {
+    const once = await process("<p>a</p><h3>b</h3>");
+    const twice = (await unified()
+      .use(rehypeObsidian)
+      .run(structuredClone(once))) as Root;
+    expect(wrappers(twice)).toEqual([
+      ["el-p", "p"],
+      ["el-h3", "h3"],
+    ]);
+  });
+
+  it("can be turned off", async () => {
+    const tree = await process("<p>a</p>", { blockWrappers: false });
+    expect(wrappers(tree)).toEqual([["", ""]]);
   });
 });
