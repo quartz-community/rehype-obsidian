@@ -37,14 +37,14 @@ const isElement = (node: ElementContent, tag: string): node is Element =>
  * item's own, not in a paragraph. Runs after `bareFootnotes`, which renumbers
  * the references.
  *
- * The screen-reader heading GFM opens the list with (`h2.sr-only`) goes, unless
- * `heading`: Obsidian has none, and themes' heading rules (numbering, rules
- * above headings) would count it. Its text names the section (`aria-label`),
- * and the references no longer point at it.
+ * The screen-reader heading GFM opens the list with (`h2.sr-only`) stays unless
+ * `heading` is false: Obsidian has none, and themes' heading rules (numbering,
+ * rules above headings) would count it. Without it, its text names the section
+ * (`aria-label`), and the references no longer point at it.
  */
 export const footnoteMarkup = (
   tree: Root,
-  { heading: keepHeading = false }: { heading?: boolean } = {},
+  { heading: keepHeading = true }: { heading?: boolean } = {},
 ): void => {
   const removedLabels = new Set<string>();
   visit(tree, "element", (node: Element) => {

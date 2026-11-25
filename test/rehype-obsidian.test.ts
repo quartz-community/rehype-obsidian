@@ -596,7 +596,7 @@ describe("footnote markup", () => {
   });
 
   it("opens the footnotes with a rule, in place of the screen-reader heading", async () => {
-    const tree = await process(NOTE);
+    const tree = await process(NOTE, { footnoteHeading: false });
     const section = findFirstElement(tree, "section")!;
     const tags = section.children
       .filter((c): c is Element => c.type === "element")
@@ -607,12 +607,14 @@ describe("footnote markup", () => {
     const [ref] = findElements(tree, "a");
     expect(ref!.properties?.ariaDescribedBy).toBeUndefined();
     // Idempotent.
-    const again = await process(NOTE.replace("</h2>", "</h2><hr>"));
+    const again = await process(NOTE.replace("</h2>", "</h2><hr>"), {
+      footnoteHeading: false,
+    });
     expect(findElements(again, "hr").length).toBe(1);
   });
 
-  it("keeps the screen-reader heading with footnoteHeading", async () => {
-    const tree = await process(NOTE, { footnoteHeading: true });
+  it("keeps the screen-reader heading by default", async () => {
+    const tree = await process(NOTE);
     const section = findFirstElement(tree, "section")!;
     const tags = section.children
       .filter((c): c is Element => c.type === "element")

@@ -29,9 +29,9 @@ export interface RehypeObsidianOptions {
   /** Obsidian's footnote classes, `[1]` labels and the rule above the footnotes, which themes style. */
   footnoteMarkup?: boolean;
   /**
-   * Keep GFM's "Footnotes" heading (`h2.sr-only`) in the footnotes. Obsidian has none, and
-   * themes' heading rules count it; without styles for `.sr-only` it is a visible heading.
-   * With `footnoteMarkup`; off by default, as in Obsidian.
+   * Keep GFM's "Footnotes" heading (`h2.sr-only`) in the footnotes, as Quartz shows it (it
+   * doesn't hide `.sr-only`). Off, as in Obsidian: no heading, which themes' heading rules
+   * would count; its text names the section. With `footnoteMarkup`.
    */
   footnoteHeading?: boolean;
   /** Obsidian's bullet markup (`ul.has-list-bullet`, `span.list-bullet`), where themes draw bullets. */
@@ -63,7 +63,7 @@ const defaultOptions: Required<RehypeObsidianOptions> = {
   stripComments: true,
   bareFootnotes: true,
   footnoteMarkup: true,
-  footnoteHeading: false,
+  footnoteHeading: true,
   listBullets: true,
   headingData: true,
   colouredHighlights: true,
