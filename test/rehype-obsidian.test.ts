@@ -795,6 +795,14 @@ describe("block wrappers", () => {
       ["el-p", "p+div"],
       ["el-p", "p"],
     ]);
+    // With the empty paragraph the parser leaves after it.
+    const split = await process(
+      '<p></p><div class="transclude internal-embed markdown-embed"><a href="x" class="transclude-inner">x</a></div><p></p><p>After</p>',
+    );
+    expect(wrappers(split)).toEqual([
+      ["el-p", "p+div+p"],
+      ["el-p", "p"],
+    ]);
   });
 
   it("wraps once", async () => {

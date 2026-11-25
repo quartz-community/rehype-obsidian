@@ -89,7 +89,8 @@ export const blockWrappers = (tree: Root): void => {
       continue;
     }
     // `![[note]]`: the parser splits the embed's div out of its paragraph
-    // (`<p></p><div class="transclude">`); both go in the paragraph's wrapper.
+    // (`<p></p><div class="transclude"></div><p></p>`); all go in the
+    // paragraph's wrapper.
     if (isEmptyParagraph(node)) {
       let j = i + 1;
       while (
@@ -100,10 +101,20 @@ export const blockWrappers = (tree: Root): void => {
         j++;
       const next = tree.children[j];
       if (next?.type === "element" && isTransclude(next)) {
+        // And the empty paragraph after it, from the paragraph's closing tag.
+        let k = j + 1;
+        while (
+          k < tree.children.length &&
+          tree.children[k]!.type === "text" &&
+          !(tree.children[k] as { value: string }).value.trim()
+        )
+          k++;
+        const after = tree.children[k];
+        const end = after && isEmptyParagraph(after) ? k : j;
         out.push(
-          wrapper("p", tree.children.slice(i, j + 1) as ElementContent[]),
+          wrapper("p", tree.children.slice(i, end + 1) as ElementContent[]),
         );
-        i = j;
+        i = end;
         continue;
       }
     }
