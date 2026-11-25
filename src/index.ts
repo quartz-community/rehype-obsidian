@@ -4,6 +4,7 @@ import { bareFootnotes } from "./lib/bare-footnotes.js";
 import { blockReferences, WIKILINK_PROPERTY } from "./lib/block-references.js";
 import { blockWrappers, isBlockWrapper } from "./lib/block-wrappers.js";
 import { checkbox } from "./lib/checkbox.js";
+import { collapseIndicators } from "./lib/collapse-indicators.js";
 import { colouredHighlights } from "./lib/coloured-highlights.js";
 import { displayMathBreaks } from "./lib/display-math-breaks.js";
 import { footnoteMarkup } from "./lib/footnote-markup.js";
@@ -36,6 +37,13 @@ export interface RehypeObsidianOptions {
   footnoteHeading?: boolean;
   /** Obsidian's bullet markup (`ul.has-list-bullet`, `span.list-bullet`), where themes draw bullets. */
   listBullets?: boolean;
+  /**
+   * Obsidian's fold arrows (`span.heading-collapse-indicator` in the note's
+   * headings, `span.list-collapse-indicator` in list items with a sublist),
+   * which themes style. They don't fold anything here: hide them unless the
+   * site folds headings or lists.
+   */
+  collapseIndicators?: boolean;
   /** Obsidian's `data-heading` attribute (the heading's text), which themes select headings by. */
   headingData?: boolean;
   /**
@@ -65,6 +73,7 @@ const defaultOptions: Required<RehypeObsidianOptions> = {
   footnoteMarkup: true,
   footnoteHeading: true,
   listBullets: true,
+  collapseIndicators: true,
   headingData: true,
   colouredHighlights: true,
   displayMathBreaks: true,
@@ -85,6 +94,7 @@ export default function rehypeObsidian(userOpts?: RehypeObsidianOptions) {
     if (opts.footnoteMarkup)
       footnoteMarkup(tree, { heading: opts.footnoteHeading });
     if (opts.listBullets) listBullets(tree);
+    if (opts.collapseIndicators) collapseIndicators(tree);
     if (opts.headingData) headingData(tree);
     if (opts.colouredHighlights) colouredHighlights(tree);
     if (opts.displayMathBreaks) displayMathBreaks(tree);
@@ -95,6 +105,7 @@ export default function rehypeObsidian(userOpts?: RehypeObsidianOptions) {
 
 export {
   bareFootnotes,
+  collapseIndicators,
   blockWrappers,
   isBlockWrapper,
   footnoteMarkup,

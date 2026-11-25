@@ -566,10 +566,85 @@ describe("list bullets", () => {
   });
 
   it("adds one bullet per item and can be turned off", async () => {
+    const bullets = (t: Root) =>
+      findElements(t, "span").filter((s) =>
+        String(s.properties?.className).includes("list-bullet"),
+      );
     const tree = await process(LIST);
-    expect(findElements(tree, "span").length).toBe(3);
+    expect(bullets(tree).length).toBe(3);
     const off = await process(LIST, { listBullets: false });
-    expect(findElements(off, "span").length).toBe(0);
+    expect(bullets(off).length).toBe(0);
+  });
+});
+
+describe("collapse indicators", () => {
+  const classes = (n: ElementContent | undefined) =>
+    n?.type === "element" ? n.properties?.className : undefined;
+
+  it("opens the note's headings with Obsidian's fold arrow", async () => {
+    const tree = await process(
+      '<h2 id="a">A</h2><blockquote><h3>In a quote</h3></blockquote>',
+    );
+    const h2 = findFirstElement(tree, "h2")!;
+    const arrow = h2.children[0] as Element;
+    expect(arrow.tagName).toBe("span");
+    expect(arrow.properties?.className).toEqual([
+      "heading-collapse-indicator",
+      "collapse-indicator",
+      "collapse-icon",
+    ]);
+    expect((arrow.children[0] as Element).properties?.className).toEqual([
+      "svg-icon",
+      "right-triangle",
+    ]);
+    // The heading's text is unchanged.
+    expect(h2.properties?.dataHeading).toBe("A");
+    // Only the note's own headings fold.
+    expect(classes(findFirstElement(tree, "h3")!.children[0])).toBeUndefined();
+  });
+
+  it("puts the arrow after the bullet, before a task's checkbox, in items with a sublist", async () => {
+    const tree = await process(
+      "<ul><li>a<ul><li>b</li></ul></li></ul>" +
+        "<ol><li>c<ul><li>d</li></ul></li></ol>" +
+        '<ul class="contains-task-list"><li class="task-list-item"><input type="checkbox"> e<ul><li>f</li></ul></li></ul>',
+    );
+    const [a, b, c, d, e, f] = findElements(tree, "li");
+    expect(a!.children.slice(0, 2).map(classes)).toEqual([
+      ["list-bullet"],
+      ["list-collapse-indicator", "collapse-indicator", "collapse-icon"],
+    ]);
+    expect(classes(c!.children[0])).toEqual([
+      "list-collapse-indicator",
+      "collapse-indicator",
+      "collapse-icon",
+    ]);
+    expect(classes(e!.children[1])).toEqual([
+      "list-collapse-indicator",
+      "collapse-indicator",
+      "collapse-icon",
+    ]);
+    expect((e!.children[2] as Element).tagName).toBe("input");
+    for (const leaf of [b, d, f])
+      expect(
+        leaf!.children.some((n) =>
+          String(classes(n)).includes("collapse-indicator"),
+        ),
+      ).toBe(false);
+  });
+
+  it("adds one arrow per heading or item and can be turned off", async () => {
+    const html = "<h2>A</h2><ul><li>a<ul><li>b</li></ul></li></ul>";
+    const count = (t: Root) =>
+      findElements(t, "span").filter((s) =>
+        String(s.properties?.className).includes("collapse-indicator"),
+      ).length;
+    const tree = await process(html);
+    expect(count(tree)).toBe(2);
+    const again = await process(html);
+    await unified().use(rehypeObsidian).run(again);
+    expect(count(again)).toBe(2);
+    expect(count(await process(html, { collapseIndicators: false }))).toBe(0);
   });
 });
 
