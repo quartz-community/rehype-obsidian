@@ -578,7 +578,7 @@ describe("footnote markup", () => {
     node.children.map((c) => (c.type === "text" ? c.value : "")).join("");
   // What mdast-util-to-hast emits, through rehype-raw (boolean attributes as "").
   const NOTE =
-    '<p>text<sup><a href="#user-content-fn-1" id="user-content-fnref-1" data-footnote-ref="">1</a></sup></p>' +
+    '<p>text<sup><a href="#user-content-fn-1" id="user-content-fnref-1" data-footnote-ref="" aria-describedby="footnote-label">1</a></sup></p>' +
     '<section data-footnotes="" class="footnotes"><h2 class="sr-only" id="footnote-label">Footnotes</h2>' +
     '<ol><li id="user-content-fn-1"><p>body <a href="#user-content-fnref-1" data-footnote-backref="">↩</a></p></li></ol></section>';
 
@@ -595,16 +595,37 @@ describe("footnote markup", () => {
     ]);
   });
 
-  it("opens the footnotes with a rule, after the screen-reader heading", async () => {
+  it("opens the footnotes with a rule, in place of the screen-reader heading", async () => {
     const tree = await process(NOTE);
     const section = findFirstElement(tree, "section")!;
     const tags = section.children
       .filter((c): c is Element => c.type === "element")
       .map((c) => c.tagName);
-    expect(tags).toEqual(["h2", "hr", "ol"]);
+    expect(tags).toEqual(["hr", "ol"]);
+    // The heading's text names the section; the reference no longer points at it.
+    expect(section.properties?.ariaLabel).toBe("Footnotes");
+    const [ref] = findElements(tree, "a");
+    expect(ref!.properties?.ariaDescribedBy).toBeUndefined();
     // Idempotent.
     const again = await process(NOTE.replace("</h2>", "</h2><hr>"));
     expect(findElements(again, "hr").length).toBe(1);
+  });
+
+  it("puts Obsidian's back-link right after the text, and ids on the items", async () => {
+    const tree = await process(NOTE);
+    const li = findFirstElement(tree, "li")!;
+    expect(li.properties?.dataFootnoteId).toBe("user-content-fn-1");
+    const p = findFirstElement(li, "p")!;
+    expect(p.children[0]).toMatchObject({ type: "text", value: "body" });
+    const back = findElements(tree, "a")[1]!;
+    expect(textOf(back)).toBe("↩︎");
+  });
+
+  it("an inline footnote's text is the item's own", async () => {
+    const tree = await process(NOTE.replaceAll("fn-1", "fn-inline-footnote-1"));
+    const li = findFirstElement(tree, "li")!;
+    expect(li.children[0]).toMatchObject({ type: "text", value: "body" });
+    expect(findElements(li, "p").length).toBe(0);
   });
 
   it("leaves them alone when disabled", async () => {
