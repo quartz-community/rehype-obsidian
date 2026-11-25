@@ -37,12 +37,15 @@ const isElement = (node: ElementContent, tag: string): node is Element =>
  * item's own, not in a paragraph. Runs after `bareFootnotes`, which renumbers
  * the references.
  *
- * The screen-reader heading GFM opens the list with (`h2.sr-only`) goes:
- * Obsidian has none, and themes' heading rules (numbering, rules above
- * headings) would count it. Its text names the section (`aria-label`), and the
- * references no longer point at it.
+ * The screen-reader heading GFM opens the list with (`h2.sr-only`) goes, unless
+ * `heading`: Obsidian has none, and themes' heading rules (numbering, rules
+ * above headings) would count it. Its text names the section (`aria-label`),
+ * and the references no longer point at it.
  */
-export const footnoteMarkup = (tree: Root): void => {
+export const footnoteMarkup = (
+  tree: Root,
+  { heading: keepHeading = false }: { heading?: boolean } = {},
+): void => {
   const removedLabels = new Set<string>();
   visit(tree, "element", (node: Element) => {
     if (node.tagName === "sup") {
@@ -74,7 +77,7 @@ export const footnoteMarkup = (tree: Root): void => {
     }
     if (node.tagName === "section" && has(node, "dataFootnotes")) {
       const at = node.children.findIndex((c) => isElement(c, "h2"));
-      if (at >= 0) {
+      if (at >= 0 && !keepHeading) {
         const heading = node.children[at] as Element;
         const label = toText(heading).trim();
         if (label) node.properties.ariaLabel = label;
@@ -82,8 +85,9 @@ export const footnoteMarkup = (tree: Root): void => {
           removedLabels.add(heading.properties.id);
         node.children.splice(at, 1);
       }
+      // After the heading, if kept: the rule is the first thing seen.
       if (!node.children.some((c) => isElement(c, "hr")))
-        node.children.unshift({
+        node.children.splice(keepHeading && at >= 0 ? at + 1 : 0, 0, {
           type: "element",
           tagName: "hr",
           properties: {},

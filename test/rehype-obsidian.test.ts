@@ -611,11 +611,22 @@ describe("footnote markup", () => {
     expect(findElements(again, "hr").length).toBe(1);
   });
 
+  it("keeps the screen-reader heading with footnoteHeading", async () => {
+    const tree = await process(NOTE, { footnoteHeading: true });
+    const section = findFirstElement(tree, "section")!;
+    const tags = section.children
+      .filter((c): c is Element => c.type === "element")
+      .map((c) => c.tagName);
+    expect(tags).toEqual(["h2", "hr", "ol"]);
+    const [ref] = findElements(tree, "a");
+    expect(ref!.properties?.ariaDescribedBy).toEqual(["footnote-label"]);
+  });
+
   it("puts Obsidian's back-link right after the text, and ids on the items", async () => {
     const tree = await process(NOTE);
     const li = findFirstElement(tree, "li")!;
     expect(li.properties?.dataFootnoteId).toBe("user-content-fn-1");
-    const p = findFirstElement(li, "p")!;
+    const p = findFirstElement({ type: "root", children: [li] }, "p")!;
     expect(p.children[0]).toMatchObject({ type: "text", value: "body" });
     const back = findElements(tree, "a")[1]!;
     expect(textOf(back)).toBe("↩︎");
@@ -625,7 +636,7 @@ describe("footnote markup", () => {
     const tree = await process(NOTE.replaceAll("fn-1", "fn-inline-footnote-1"));
     const li = findFirstElement(tree, "li")!;
     expect(li.children[0]).toMatchObject({ type: "text", value: "body" });
-    expect(findElements(li, "p").length).toBe(0);
+    expect(findElements({ type: "root", children: [li] }, "p").length).toBe(0);
   });
 
   it("leaves them alone when disabled", async () => {

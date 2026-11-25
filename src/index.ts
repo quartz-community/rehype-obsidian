@@ -28,6 +28,12 @@ export interface RehypeObsidianOptions {
   bareFootnotes?: boolean;
   /** Obsidian's footnote classes, `[1]` labels and the rule above the footnotes, which themes style. */
   footnoteMarkup?: boolean;
+  /**
+   * Keep GFM's "Footnotes" heading (`h2.sr-only`) in the footnotes. Obsidian has none, and
+   * themes' heading rules count it; without styles for `.sr-only` it is a visible heading.
+   * With `footnoteMarkup`; off by default, as in Obsidian.
+   */
+  footnoteHeading?: boolean;
   /** Obsidian's bullet markup (`ul.has-list-bullet`, `span.list-bullet`), where themes draw bullets. */
   listBullets?: boolean;
   /** Obsidian's `data-heading` attribute (the heading's text), which themes select headings by. */
@@ -57,6 +63,7 @@ const defaultOptions: Required<RehypeObsidianOptions> = {
   stripComments: true,
   bareFootnotes: true,
   footnoteMarkup: true,
+  footnoteHeading: false,
   listBullets: true,
   headingData: true,
   colouredHighlights: true,
@@ -75,7 +82,8 @@ export default function rehypeObsidian(userOpts?: RehypeObsidianOptions) {
     if (opts.obsidianUri) obsidianUri(tree);
     if (opts.stripComments) stripComments(tree);
     if (opts.bareFootnotes) bareFootnotes(tree);
-    if (opts.footnoteMarkup) footnoteMarkup(tree);
+    if (opts.footnoteMarkup)
+      footnoteMarkup(tree, { heading: opts.footnoteHeading });
     if (opts.listBullets) listBullets(tree);
     if (opts.headingData) headingData(tree);
     if (opts.colouredHighlights) colouredHighlights(tree);
