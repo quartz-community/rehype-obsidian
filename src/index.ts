@@ -5,6 +5,9 @@ import { blockReferences, WIKILINK_PROPERTY } from "./lib/block-references.js";
 import { checkbox } from "./lib/checkbox.js";
 import { colouredHighlights } from "./lib/coloured-highlights.js";
 import { displayMathBreaks } from "./lib/display-math-breaks.js";
+import { footnoteMarkup } from "./lib/footnote-markup.js";
+import { headingData } from "./lib/heading-data.js";
+import { listBullets } from "./lib/list-bullets.js";
 import { mermaidExpand } from "./lib/mermaid-expand.js";
 import { obsidianUri } from "./lib/obsidian-uri.js";
 import { stripComments } from "./lib/strip-comments.js";
@@ -22,6 +25,12 @@ export interface RehypeObsidianOptions {
   stripComments?: boolean;
   /** Render a footnote reference nothing defines as its bare label, as Obsidian does. */
   bareFootnotes?: boolean;
+  /** Obsidian's footnote classes, `[1]` labels and the rule above the footnotes, which themes style. */
+  footnoteMarkup?: boolean;
+  /** Obsidian's bullet markup (`ul.has-list-bullet`, `span.list-bullet`), where themes draw bullets. */
+  listBullets?: boolean;
+  /** Obsidian's `data-heading` attribute (the heading's text), which themes select headings by. */
+  headingData?: boolean;
   /**
    * Colour a highlight from its leading emoji and drop the marker, as Obsidian
    * 1.14 does. `remark-obsidian` keeps the emoji in the tree on purpose, so the
@@ -41,6 +50,9 @@ const defaultOptions: Required<RehypeObsidianOptions> = {
   obsidianUri: true,
   stripComments: true,
   bareFootnotes: true,
+  footnoteMarkup: true,
+  listBullets: true,
+  headingData: true,
   colouredHighlights: true,
   displayMathBreaks: true,
 };
@@ -56,6 +68,9 @@ export default function rehypeObsidian(userOpts?: RehypeObsidianOptions) {
     if (opts.obsidianUri) obsidianUri(tree);
     if (opts.stripComments) stripComments(tree);
     if (opts.bareFootnotes) bareFootnotes(tree);
+    if (opts.footnoteMarkup) footnoteMarkup(tree);
+    if (opts.listBullets) listBullets(tree);
+    if (opts.headingData) headingData(tree);
     if (opts.colouredHighlights) colouredHighlights(tree);
     if (opts.displayMathBreaks) displayMathBreaks(tree);
   };
@@ -63,6 +78,9 @@ export default function rehypeObsidian(userOpts?: RehypeObsidianOptions) {
 
 export {
   bareFootnotes,
+  footnoteMarkup,
+  headingData,
+  listBullets,
   colouredHighlights,
   displayMathBreaks,
   blockReferences,

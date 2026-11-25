@@ -1,5 +1,5 @@
 import type { Element, Parent, Root } from "hast";
-import { visit } from "unist-util-visit";
+import { SKIP, visit } from "unist-util-visit";
 
 const isElement = (node: unknown): node is Element =>
   typeof node === "object" &&
@@ -72,16 +72,33 @@ const mermaidContainer = (): Element => ({
   ],
 });
 
+/**
+ * Adds the expand button and full-screen popup to each Mermaid diagram: inside its code block
+ * (`pre > code.mermaid`, Mermaid.js), or around Pele's `div.mermaid` (Obsidian's markup), in a
+ * `div.mermaid-diagram` that holds the controls as the code block does.
+ */
 export const mermaidExpand = (tree: Root) => {
   visit(
     tree,
     "element",
-    (node: Element, _index: number | undefined, parent: Parent | undefined) => {
-      if (!isElement(node) || node.tagName !== "code") return;
-      if (!hasClassName(node, "mermaid")) return;
+    (node: Element, index: number | undefined, parent: Parent | undefined) => {
+      if (!isElement(node) || !hasClassName(node, "mermaid")) return;
       if (!isParent(parent)) return;
 
-      parent.children = [expandButton(), node, mermaidContainer()];
+      if (node.tagName === "code") {
+        parent.children = [expandButton(), node, mermaidContainer()];
+        return;
+      }
+      if (node.tagName !== "div" || index === undefined) return;
+      if (isElement(parent) && hasClassName(parent, "mermaid-diagram"))
+        return SKIP;
+      parent.children[index] = {
+        type: "element",
+        tagName: "div",
+        properties: { className: ["mermaid-diagram"] },
+        children: [expandButton(), node, mermaidContainer()],
+      };
+      return [SKIP, index + 1];
     },
   );
 };

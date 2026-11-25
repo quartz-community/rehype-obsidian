@@ -298,7 +298,8 @@ describe("rehype-obsidian", () => {
 
     expect(items[0].properties?.dataTask).toBe("?");
     expect(items[1].properties?.dataTask).toBe("/");
-    expect(items[2].properties?.dataTask).toBe(" ");
+    // As in Obsidian: an unchecked task is `data-task=""`.
+    expect(items[2].properties?.dataTask).toBe("");
     expect(items[0].properties?.dataTaskChar).toBeUndefined();
     expect(items[1].properties?.dataTaskChar).toBeUndefined();
     expect(items[2].properties?.dataTaskChar).toBeUndefined();
@@ -318,6 +319,24 @@ describe("rehype-obsidian", () => {
     expect(code.tagName).toBe("code");
     expect(container.properties?.id).toBe("mermaid-container");
     expect(container.properties?.role).toBe("dialog");
+  });
+
+  it("wraps Pele's div.mermaid with the expand controls, once", async () => {
+    const tree = await process(
+      '<p>Before</p><div class="mermaid">graph LR</div><p>After</p>',
+    );
+    const wrapper = findFirstElement(tree, "div");
+
+    expect(getClasses(wrapper!)).toEqual(["mermaid-diagram"]);
+    const [button, diagram, container] = wrapper?.children as Element[];
+    expect(button.tagName).toBe("button");
+    expect(diagram.tagName).toBe("div");
+    expect(getClasses(diagram)).toEqual(["mermaid"]);
+    expect(diagram.children).toMatchObject([
+      { type: "text", value: "graph LR" },
+    ]);
+    expect(container.properties?.id).toBe("mermaid-container");
+    expect(wrapper?.children.length).toBe(3);
   });
 
   it("marks obsidian:// links", async () => {
@@ -464,6 +483,7 @@ describe("bareFootnotes", () => {
   it("closes the gap a bared marker leaves in the numbering", async () => {
     const tree = await process(
       `<p>see ${REF} and ${defined("b", "2")}</p>${section("b")}`,
+      { footnoteMarkup: false },
     );
     expect(text(tree)).toContain("see acell and 1");
   });
@@ -492,11 +512,106 @@ describe("bareFootnotes", () => {
   it("keeps repeated references to one definition on a shared number", async () => {
     const tree = await process(
       `<p>${REF} ${defined("b", "2")} ${defined("b", "2")}</p>${section("b")}`,
+      { footnoteMarkup: false },
     );
     expect(findElements(tree, "sup").map((s) => text(s as never))).toEqual([
       "1",
       "1",
     ]);
+  });
+});
+
+describe("heading data", () => {
+  it("marks headings with their text, as Obsidian", async () => {
+    const tree = await process(
+      '<h2 id="x">Hello <em>world</em></h2><h3>Two</h3>',
+    );
+    expect(findFirstElement(tree, "h2")!.properties?.dataHeading).toBe(
+      "Hello world",
+    );
+    expect(findFirstElement(tree, "h3")!.properties?.dataHeading).toBe("Two");
+    const off = await process("<h2>A</h2>", { headingData: false });
+    expect(
+      findFirstElement(off, "h2")!.properties?.dataHeading,
+    ).toBeUndefined();
+  });
+});
+
+describe("list bullets", () => {
+  const LIST =
+    "<ul><li>a<ul><li>b</li></ul></li></ul>" +
+    '<ul class="contains-task-list"><li class="task-list-item"><input type="checkbox"> c</li></ul>' +
+    "<ol><li>d</li></ol>";
+
+  it("marks bullet lists and opens each item with a bullet, as Obsidian", async () => {
+    const tree = await process(LIST);
+    const uls = findElements(tree, "ul");
+    expect(uls.map((u) => u.properties?.className)).toEqual([
+      ["has-list-bullet"],
+      ["has-list-bullet"],
+      ["contains-task-list", "has-list-bullet"],
+    ]);
+    for (const li of findElements(tree, "li").slice(0, 3)) {
+      const first = li.children[0] as Element;
+      expect(first.tagName).toBe("span");
+      expect(first.properties?.className).toEqual(["list-bullet"]);
+    }
+    // Ordered lists have no bullets.
+    const ol = findFirstElement(tree, "ol")!;
+    expect((ol.children[0] as Element).children[0]).toMatchObject({
+      type: "text",
+      value: "d",
+    });
+  });
+
+  it("adds one bullet per item and can be turned off", async () => {
+    const tree = await process(LIST);
+    expect(findElements(tree, "span").length).toBe(3);
+    const off = await process(LIST, { listBullets: false });
+    expect(findElements(off, "span").length).toBe(0);
+  });
+});
+
+describe("footnote markup", () => {
+  const textOf = (node: Element): string =>
+    node.children.map((c) => (c.type === "text" ? c.value : "")).join("");
+  // What mdast-util-to-hast emits, through rehype-raw (boolean attributes as "").
+  const NOTE =
+    '<p>text<sup><a href="#user-content-fn-1" id="user-content-fnref-1" data-footnote-ref="">1</a></sup></p>' +
+    '<section data-footnotes="" class="footnotes"><h2 class="sr-only" id="footnote-label">Footnotes</h2>' +
+    '<ol><li id="user-content-fn-1"><p>body <a href="#user-content-fnref-1" data-footnote-backref="">↩</a></p></li></ol></section>';
+
+  it("uses Obsidian's classes and [n] labels", async () => {
+    const tree = await process(NOTE);
+    const sup = findFirstElement(tree, "sup")!;
+    expect(sup.properties?.className).toEqual(["footnote-ref"]);
+    const [ref, back] = findElements(tree, "a");
+    expect(ref!.properties?.className).toEqual(["footnote-link"]);
+    expect(textOf(ref!)).toBe("[1]");
+    expect(back!.properties?.className).toEqual([
+      "footnote-backref",
+      "footnote-link",
+    ]);
+  });
+
+  it("opens the footnotes with a rule, after the screen-reader heading", async () => {
+    const tree = await process(NOTE);
+    const section = findFirstElement(tree, "section")!;
+    const tags = section.children
+      .filter((c): c is Element => c.type === "element")
+      .map((c) => c.tagName);
+    expect(tags).toEqual(["h2", "hr", "ol"]);
+    // Idempotent.
+    const again = await process(NOTE.replace("</h2>", "</h2><hr>"));
+    expect(findElements(again, "hr").length).toBe(1);
+  });
+
+  it("leaves them alone when disabled", async () => {
+    const tree = await process(NOTE, { footnoteMarkup: false });
+    expect(
+      findFirstElement(tree, "sup")!.properties?.className,
+    ).toBeUndefined();
+    expect(findElements(tree, "hr").length).toBe(0);
   });
 });
 
