@@ -37,8 +37,18 @@ const blockName = (el: Element): string => {
   // Diagrams: Obsidian renders ```mermaid in `div.el-pre > div.mermaid`.
   if (classes.includes("mermaid-diagram") || classes.includes("mermaid"))
     return "pre";
-  // Display maths: `div.el-div > div.math.math-block` in Obsidian.
+  // Display maths: `div.el-div > div.math.math-block` in Obsidian. Before KaTeX
+  // or MathJax renders it, `pre > code.language-math.math-display`.
   if (classes.some((c) => /^(math-display|katex-display)$/.test(c)))
+    return "div";
+  if (
+    el.tagName === "pre" &&
+    el.children.some(
+      (c) =>
+        c.type === "element" &&
+        classesOf(c).some((k) => /^(math-display|language-math)$/.test(k)),
+    )
+  )
     return "div";
   // A note embed is a paragraph's in Obsidian (`div.el-p > p > span.internal-embed`).
   if (isTransclude(el)) return "p";
