@@ -21,12 +21,33 @@ const isEmptyParagraph = (node: RootContent): boolean =>
 const isTransclude = (el: Element): boolean =>
   classesOf(el).includes("transclude");
 
+/** Display maths not yet rendered: `code.language-math`, or `[data-language="math"]` once highlighted. */
+const hasMathCode = (el: Element): boolean =>
+  el.properties.dataLanguage === "math" ||
+  el.children.some(
+    (c) =>
+      c.type === "element" &&
+      (classesOf(c).some((k) => /^(math-display|language-math)$/.test(k)) ||
+        c.properties.dataLanguage === "math" ||
+        (c.tagName === "pre" && hasMathCode(c))),
+  );
+
 /**
  * The block Obsidian names the wrapper after (`div.el-<block>`), for Quartz's
  * markup of the same block where it differs from Obsidian's.
  */
 const blockName = (el: Element): string => {
   const classes = classesOf(el);
+  // Diagrams: Obsidian renders ```mermaid in `div.el-pre > div.mermaid`.
+  if (classes.includes("mermaid-diagram") || classes.includes("mermaid"))
+    return "pre";
+  // Display maths: `div.el-div > div.math.math-block` in Obsidian. Before KaTeX
+  // or MathJax renders it, `pre > code.language-math.math-display` (in syntax
+  // highlighting's `<figure>`, if that ran first).
+  if (classes.some((c) => /^(math-display|katex-display)$/.test(c)))
+    return "div";
+  if ((el.tagName === "pre" || el.tagName === "figure") && hasMathCode(el))
+    return "div";
   // Code blocks: `<figure>` from syntax highlighting, `<pre>` in Obsidian.
   if (
     el.tagName === "figure" &&
@@ -34,22 +55,6 @@ const blockName = (el: Element): string => {
       el.children.some((c) => c.type === "element" && c.tagName === "pre"))
   )
     return "pre";
-  // Diagrams: Obsidian renders ```mermaid in `div.el-pre > div.mermaid`.
-  if (classes.includes("mermaid-diagram") || classes.includes("mermaid"))
-    return "pre";
-  // Display maths: `div.el-div > div.math.math-block` in Obsidian. Before KaTeX
-  // or MathJax renders it, `pre > code.language-math.math-display`.
-  if (classes.some((c) => /^(math-display|katex-display)$/.test(c)))
-    return "div";
-  if (
-    el.tagName === "pre" &&
-    el.children.some(
-      (c) =>
-        c.type === "element" &&
-        classesOf(c).some((k) => /^(math-display|language-math)$/.test(k)),
-    )
-  )
-    return "div";
   // A note embed is a paragraph's in Obsidian (`div.el-p > p > span.internal-embed`).
   if (isTransclude(el)) return "p";
   return el.tagName.toLowerCase();

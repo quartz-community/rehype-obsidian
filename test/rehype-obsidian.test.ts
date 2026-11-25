@@ -773,11 +773,12 @@ describe("block wrappers", () => {
 
   it("names Quartz's code, diagram, maths and footnote blocks as Obsidian does", async () => {
     const tree = await process(
-      '<figure data-rehype-pretty-code-figure><pre><code>x</code></pre></figure><div class="mermaid">graph LR</div><span class="katex-display">m</span><pre><code class="language-math math-display">x</code></pre><section data-footnotes class="footnotes"><ol><li>f</li></ol></section>',
+      '<figure data-rehype-pretty-code-figure><pre><code>x</code></pre></figure><div class="mermaid">graph LR</div><span class="katex-display">m</span><pre><code class="language-math math-display">x</code></pre><figure data-rehype-pretty-code-figure><pre data-language="math"><code data-language="math">y</code></pre></figure><section data-footnotes class="footnotes"><ol><li>f</li></ol></section>',
     );
     expect(wrappers(tree).map(([w]) => w)).toEqual([
       "el-pre",
       "el-pre",
+      "el-div",
       "el-div",
       "el-div",
       "el-section",
