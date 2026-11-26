@@ -77,6 +77,35 @@ describe("rehype-obsidian", () => {
     expect(textChild?.value).toBe("Some text");
   });
 
+  // quartz-community/github-flavored-markdown#12
+  it("points same-page block links at the block", async () => {
+    const tree = await process(
+      "<p>A paragraph. ^Real</p><ul><li>item ^item</li></ul>" +
+        '<p><a href="#%5Ereal">md</a> <a href="#^item">raw</a> <a href="#%5EREAL">case</a>' +
+        ' <a href="#%5Emissing">missing</a> <a href="#heading">heading</a>' +
+        ' <a href="other#%5Ereal">other note</a></p>',
+    );
+    const hrefs = findElements(tree, "a").map((a) => a.properties?.href);
+    expect(hrefs).toEqual([
+      "#real",
+      "#item",
+      "#real",
+      "#%5Emissing",
+      "#heading",
+      "other#%5Ereal",
+    ]);
+  });
+
+  it("leaves block links alone without block references", async () => {
+    const tree = await process(
+      '<p>x ^real</p><p><a href="#%5Ereal">l</a></p>',
+      {
+        blockReferences: false,
+      },
+    );
+    expect(findFirstElement(tree, "a")?.properties?.href).toBe("#%5Ereal");
+  });
+
   it("lowercases mixed-case block reference IDs", async () => {
     const tree = await process("<p>Content ^CB-A34B78B4ICqt6zX6xBDAh6CT</p>");
     const paragraph = findFirstElement(tree, "p");
