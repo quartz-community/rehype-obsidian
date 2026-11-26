@@ -3,7 +3,10 @@ import rehypeParse from "rehype-parse";
 import { unified } from "unified";
 import { describe, expect, it } from "vitest";
 
-import rehypeObsidian, { type RehypeObsidianOptions } from "../src/index.js";
+import rehypeObsidian, {
+  blockReferences,
+  type RehypeObsidianOptions,
+} from "../src/index.js";
 
 const process = async (html: string, opts?: RehypeObsidianOptions) => {
   const processor = unified()
@@ -68,7 +71,7 @@ describe("rehype-obsidian", () => {
     const tree = await process("<p>Some text ^blockId</p>");
     const paragraph = findFirstElement(tree, "p");
 
-    expect(paragraph?.properties?.id).toBe("blockid");
+    expect(paragraph?.properties?.id).toBe("^blockid");
 
     if (!paragraph) throw new Error("Paragraph not found");
     const textChild = paragraph.children.find(
@@ -87,9 +90,9 @@ describe("rehype-obsidian", () => {
     );
     const hrefs = findElements(tree, "a").map((a) => a.properties?.href);
     expect(hrefs).toEqual([
-      "#real",
-      "#item",
-      "#real",
+      "#^real",
+      "#^item",
+      "#^real",
       "#%5Emissing",
       "#heading",
       "other#%5Ereal",
@@ -106,11 +109,35 @@ describe("rehype-obsidian", () => {
     expect(findFirstElement(tree, "a")?.properties?.href).toBe("#%5Ereal");
   });
 
+  it("gives a block and a heading of the same name different ids", async () => {
+    const tree = await process(
+      '<h2 id="para-1">Para 1</h2><p>some para ^para-1</p>' +
+        '<p><a href="#%5Epara-1">block</a> <a href="#para-1">heading</a></p>',
+    );
+    expect(findFirstElement(tree, "h2")?.properties?.id).toBe("para-1");
+    expect(findElements(tree, "p")[0]?.properties?.id).toBe("^para-1");
+    expect(findElements(tree, "a").map((a) => a.properties?.href)).toEqual([
+      "#^para-1",
+      "#para-1",
+    ]);
+  });
+
+  it("keys file.data.blocks by the bare name", () => {
+    const tree = unified()
+      .use(rehypeParse, { fragment: true })
+      .parse("<p>x ^Blk</p>");
+    const file: { data?: Record<string, unknown> } = {};
+    blockReferences(tree, file);
+    const blocks = file.data!.blocks as Record<string, Element>;
+    expect(Object.keys(blocks)).toEqual(["blk"]);
+    expect(blocks.blk!.properties.id).toBe("^blk");
+  });
+
   it("lowercases mixed-case block reference IDs", async () => {
     const tree = await process("<p>Content ^CB-A34B78B4ICqt6zX6xBDAh6CT</p>");
     const paragraph = findFirstElement(tree, "p");
 
-    expect(paragraph?.properties?.id).toBe("cb-a34b78b4icqt6zx6xbdah6ct");
+    expect(paragraph?.properties?.id).toBe("^cb-a34b78b4icqt6zx6xbdah6ct");
   });
 
   // Recorded live against Obsidian 1.15.0: every inline text ending in an identifier is
@@ -118,14 +145,14 @@ describe("rehype-obsidian", () => {
   it("strips a block reference inside emphasis", async () => {
     const tree = await process("<p>x <strong>^blk</strong> y</p>");
     const paragraph = findFirstElement(tree, "p");
-    expect(paragraph?.properties?.id).toBe("blk");
+    expect(paragraph?.properties?.id).toBe("^blk");
     expect(findFirstElement(tree, "strong")?.children).toEqual([]);
   });
 
   it("names the block by the last of several block references", async () => {
     const tree = await process("<p>x <strong>^blk</strong> y ^two</p>");
     const paragraph = findFirstElement(tree, "p");
-    expect(paragraph?.properties?.id).toBe("two");
+    expect(paragraph?.properties?.id).toBe("^two");
     expect(findFirstElement(tree, "strong")?.children).toEqual([]);
     const texts = paragraph?.children.filter(
       (child): child is Text => child.type === "text",
@@ -137,7 +164,7 @@ describe("rehype-obsidian", () => {
     const tree = await process(
       '<ul><li>a</li></ul><p>x <a href="u">l</a> ^blk</p>',
     );
-    expect(findFirstElement(tree, "p")?.properties?.id).toBe("blk");
+    expect(findFirstElement(tree, "p")?.properties?.id).toBe("^blk");
     expect(findFirstElement(tree, "ul")?.properties?.id).toBeUndefined();
   });
 
@@ -145,7 +172,7 @@ describe("rehype-obsidian", () => {
     const tree = await process(
       "<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>a ^blk</td></tr></tbody></table>",
     );
-    expect(findFirstElement(tree, "table")?.properties?.id).toBe("blk");
+    expect(findFirstElement(tree, "table")?.properties?.id).toBe("^blk");
     const cell = findFirstElement(tree, "td");
     expect((cell?.children[0] as Text).value).toBe("a ");
   });
@@ -187,14 +214,14 @@ describe("rehype-obsidian", () => {
       );
     }
     const markdown = await process('<p>7 <a href="n">text ^abc</a></p>');
-    expect(findFirstElement(markdown, "p")?.properties?.id).toBe("abc");
+    expect(findFirstElement(markdown, "p")?.properties?.id).toBe("^abc");
     expect((findFirstElement(markdown, "a")?.children[0] as Text).value).toBe(
       "text ",
     );
     const trailing = await process(
       '<p>18 text <a href="n" data-wikilink>n</a> ^rrr</p>',
     );
-    expect(findFirstElement(trailing, "p")?.properties?.id).toBe("rrr");
+    expect(findFirstElement(trailing, "p")?.properties?.id).toBe("^rrr");
   });
 
   it("reads only Obsidian's block reference characters", async () => {
@@ -474,7 +501,7 @@ describe("rehype-obsidian", () => {
     const iframe = findFirstElement(tree, "iframe");
     const pre = findFirstElement(tree, "pre");
 
-    expect(paragraph?.properties?.id).toBe("task");
+    expect(paragraph?.properties?.id).toBe("^task");
     expect(input?.properties?.disabled).toBe(false);
     expect(input?.properties?.className).toEqual([
       "checkbox-toggle",

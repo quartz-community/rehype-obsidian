@@ -77,6 +77,13 @@ const ensureFileData = (file: VFileLike): VFileData => {
   return data;
 };
 
+/**
+ * The id of the block `^name`: `^name`, lowercased. Blocks and headings are separate namespaces,
+ * as in Obsidian, so block `^para-1` and heading `## Para 1` (`para-1`) don't share an id; links
+ * to the block are `#^para-1`. `file.data.blocks` is keyed by the bare name (`para-1`).
+ */
+export const blockElementId = (name: string) => `^${name.toLowerCase()}`;
+
 const applyBlockId = (
   node: Element,
   blockId: string,
@@ -86,7 +93,7 @@ const applyBlockId = (
     node.properties = {};
   }
   const slugged = blockId.toLowerCase();
-  node.properties.id = slugged;
+  node.properties.id = blockElementId(slugged);
   blocks[slugged] = node;
 };
 
@@ -187,7 +194,7 @@ const resolveBlockLinks = (tree: Root, blocks: Record<string, Element>) => {
     if (typeof href !== "string") return;
     const id = linkedBlockId(href);
     if (id !== undefined && Object.hasOwn(blocks, id))
-      node.properties.href = `#${id}`;
+      node.properties.href = `#${blockElementId(id)}`;
   });
 };
 
