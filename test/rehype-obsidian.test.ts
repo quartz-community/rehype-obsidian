@@ -203,6 +203,50 @@ describe("rehype-obsidian", () => {
     );
   });
 
+  it("embeds YouTube videos and playlists only from YouTube's hosts", async () => {
+    const embedded = [
+      [
+        "https://youtu.be/dQw4w9WgXcQ",
+        "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      ],
+      [
+        "https://m.youtube.com/watch?v=dQw4w9WgXcQ",
+        "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      ],
+      [
+        "https://youtube.com/embed/dQw4w9WgXcQ",
+        "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      ],
+      [
+        "https://www.youtube.com/playlist?list=PL123",
+        "https://www.youtube.com/embed/videoseries?list=PL123",
+      ],
+    ];
+    for (const [src, embed] of embedded) {
+      const tree = await process(`<img src="${src}" />`);
+      expect(findFirstElement(tree, "iframe")?.properties?.src, src).toBe(
+        embed,
+      );
+    }
+  });
+
+  // quartz-community/obsidian-flavored-markdown#13
+  it("leaves images elsewhere alone, even with a YouTube-like path", async () => {
+    for (const src of [
+      "https://pub-0123456789abcdef.r2.dev/Sisifo.webp",
+      "https://example.com/watch?v=dQw4w9WgXcQ",
+      "https://example.com/embed/dQw4w9WgXcQ",
+      "https://notyoutube.com/watch?v=dQw4w9WgXcQ",
+      "https://youtube.com.example.org/watch?v=dQw4w9WgXcQ",
+      "https://example.com/gallery?list=PL123",
+      "images/v/abcdefghijk",
+    ]) {
+      const tree = await process(`<img src="${src}" />`);
+      expect(findFirstElement(tree, "iframe"), src).toBeUndefined();
+      expect(findFirstElement(tree, "img")?.properties?.src, src).toBe(src);
+    }
+  });
+
   it("falls back to link blockquote for unavailable tweets", async () => {
     const tree = await process(
       '<img src="https://twitter.com/user/status/1234567890123456789" />' +

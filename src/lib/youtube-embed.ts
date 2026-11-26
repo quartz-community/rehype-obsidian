@@ -5,6 +5,26 @@ const youTubeVideoRegex =
   /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
 const youTubePlaylistRegex = /[?&]list=([^#?&]*)/;
 
+/**
+ * Hosts whose URLs are YouTube videos or playlists. The patterns above only look at the path, so
+ * without this an image such as `https://pub-x.r2.dev/Sisifo.webp` (`v/` and an 11-character
+ * name) became a YouTube embed.
+ */
+const youTubeHostRegex =
+  /^(?:(?:www|m|music)\.)?(?:youtube\.com|youtube-nocookie\.com)$|^youtu\.be$/;
+
+/** Whether a URL (`https://…`, `http://…` or `//…`) is on YouTube. */
+export const isYouTubeUrl = (src: string): boolean => {
+  let url: URL;
+  try {
+    url = new URL(src.startsWith("//") ? `https:${src}` : src);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+  return youTubeHostRegex.test(url.hostname.toLowerCase());
+};
+
 const isElement = (node: unknown): node is Element =>
   typeof node === "object" &&
   node !== null &&
@@ -24,7 +44,7 @@ export const youTubeEmbed = (tree: Root) => {
       if (!node.properties) return;
 
       const src = node.properties.src;
-      if (typeof src !== "string") return;
+      if (typeof src !== "string" || !isYouTubeUrl(src)) return;
 
       const videoMatch = src.match(youTubeVideoRegex);
       const playlistMatch = src.match(youTubePlaylistRegex);
