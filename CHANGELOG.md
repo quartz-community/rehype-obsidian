@@ -1,3 +1,19 @@
+## 1.5.0
+
+### Minor Changes
+
+- 651e608: Each top-level block of a note is wrapped in the div Obsidian's reading view puts it in (`div.el-p > p`, `div.el-h2 > h2`, `div.el-pre` around code blocks and diagrams, `div.el-div` around callouts and display maths, `div.el-section` around the footnotes). Themes space blocks with these wrappers, and their `:first-child` / `:last-child` rules match each block in its own wrapper; 145 registry themes style them. The wrappers have no styles of their own, so sites without a theme look the same. Runs after the other steps, and leaves an already wrapped tree alone. Turn off with `blockWrappers: false`; `isBlockWrapper` is exported for code that walks a note's top-level blocks.
+- 62bde50: Obsidian's fold arrows (`collapseIndicators`): `span.heading-collapse-indicator` opens each of the note's headings, and `span.list-collapse-indicator` each list item with a sublist (after its bullet, before a task's checkbox), with Obsidian's `right-triangle` icon. Themes style and move them. They don't fold anything by themselves, so a site hides them unless it folds headings or lists (Quartz does). Turn off with `collapseIndicators: false`.
+- a9ddf99: Footnotes closer to Obsidian's (`footnoteMarkup`): items have `data-footnote-id`, back-links read `↩︎` right after the text, and an inline footnote's text (`^[…]`) is the item's own, not in a paragraph. `footnoteHeading: false` drops the "Footnotes" heading GFM opens the list with (`h2.sr-only`), as Obsidian has none and themes' heading rules count it: the rule is then the section's first child, the heading's text names the section (`aria-label`), and references no longer point at it. It stays by default, since Quartz doesn't hide `.sr-only` and shows it as a heading.
+
+### Patch Changes
+
+- e0ca6e2: Footnotes use Obsidian's markup, which themes style: references are `sup.footnote-ref > a.footnote-link` reading `[1]`, the footnotes open with a rule (`section.footnotes > hr`), and back-links are `a.footnote-backref.footnote-link`. Turn off with `footnoteMarkup: false`.
+- 0fc2fc1: Headings carry Obsidian's `data-heading` attribute (the heading's text), which themes select headings by (`h2[data-heading]`; 31 registry themes, such as ITS's illusion headings). Turn off with `headingData: false`.
+- b0c8d0a: Bullet lists use Obsidian's markup, `ul.has-list-bullet` with each item opening with `span.list-bullet`, where Obsidian and themes draw bullets (custom shapes, glyphs and colours per level). Without Obsidian's CSS the span is empty and the list marker stays. Turn off with `listBullets: false`.
+- ffc1a82: Mermaid diagrams in Obsidian's markup (`div.mermaid`, as obsidian-flavored-markdown renders them with Pele) get the expand button and popup in a `div.mermaid-diagram` around them, instead of inside a code block. Diagrams in code blocks (`pre > code.mermaid`) keep them as before.
+- 22c1166: Unchecked tasks get `data-task=""`, as in Obsidian, instead of `data-task=" "`, so themes' rules for unchecked checkboxes apply.
+
 ## 1.4.0
 
 ### Minor Changes
