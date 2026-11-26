@@ -1,3 +1,10 @@
+## 1.5.1
+
+### Patch Changes
+
+- 3a6d7ae: Same-page block links reach their block: `blockReferences` points `[x](#^id)` and `[[#^id]]` (`href="#%5Eid"`) at the id it gives the block (`#id`), as Obsidian follows them. Same-page anchors used to be resolved only before block ids existed (github-flavored-markdown#12).
+- 6359569: YouTube embeds only for images on YouTube (`youtube.com`, `youtu.be`, `youtube-nocookie.com`): an image whose path looked like a video, such as `https://….r2.dev/Sisifo.webp` (`v/` and an 11-character name), became a YouTube iframe (obsidian-flavored-markdown#13).
+
 ## 1.5.0
 
 ### Minor Changes
