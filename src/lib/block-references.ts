@@ -160,6 +160,37 @@ const stripInlineIds = (node: Element, skip?: Text): string | undefined => {
   return last;
 };
 
+/**
+ * The block a same-page link names, `#^id` (percent-encoded or not, as Markdown links and
+ * wikilinks write it), or `undefined` for any other link.
+ */
+const linkedBlockId = (href: string): string | undefined => {
+  if (!href.startsWith("#")) return undefined;
+  let anchor = href.slice(1);
+  try {
+    anchor = decodeURIComponent(anchor);
+  } catch {
+    // not percent-encoding: read as written
+  }
+  return anchor.startsWith("^") ? anchor.slice(1).toLowerCase() : undefined;
+};
+
+/**
+ * Point same-page block links (`[x](#^id)`, `[[#^id]]`) at the block's id, as Obsidian follows
+ * them. The ids are given here, after heading-id plugins resolved same-page anchors
+ * (github-flavored-markdown#12), so no earlier pass could find them.
+ */
+const resolveBlockLinks = (tree: Root, blocks: Record<string, Element>) => {
+  visit(tree, "element", (node: Element) => {
+    if (node.tagName !== "a") return;
+    const href = node.properties?.href;
+    if (typeof href !== "string") return;
+    const id = linkedBlockId(href);
+    if (id !== undefined && Object.hasOwn(blocks, id))
+      node.properties.href = `#${id}`;
+  });
+};
+
 export const blockReferences = (tree: Root, file: VFileLike) => {
   const data = ensureFileData(file);
   const blocks = data.blocks;
@@ -247,6 +278,8 @@ export const blockReferences = (tree: Root, file: VFileLike) => {
       applyBlockId(node, blockId, blocks);
     },
   );
+
+  resolveBlockLinks(tree, blocks);
 
   data.htmlAst = tree;
 };
