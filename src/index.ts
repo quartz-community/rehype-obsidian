@@ -1,7 +1,11 @@
 import type { Root } from "hast";
 
 import { bareFootnotes } from "./lib/bare-footnotes.js";
-import { blockReferences, WIKILINK_PROPERTY } from "./lib/block-references.js";
+import {
+  blockElementId,
+  blockReferences,
+  WIKILINK_PROPERTY,
+} from "./lib/block-references.js";
 import { blockWrappers, isBlockWrapper } from "./lib/block-wrappers.js";
 import { checkbox } from "./lib/checkbox.js";
 import { collapseIndicators } from "./lib/collapse-indicators.js";
@@ -114,6 +118,7 @@ export {
   colouredHighlights,
   displayMathBreaks,
   blockReferences,
+  blockElementId,
   youTubeEmbed,
   tweetEmbed,
   checkbox,
