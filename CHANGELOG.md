@@ -1,3 +1,9 @@
+## 1.6.1
+
+### Patch Changes
+
+- a5b57dc: A block identifier on its own line after a list, table or paragraph (`^id`) no longer leaves an empty paragraph (and, with block wrappers on, an empty `div.el-p`) behind; it is removed, as Obsidian renders none.
+
 ## 1.6.0
 
 ### Minor Changes
