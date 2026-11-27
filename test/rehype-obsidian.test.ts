@@ -277,6 +277,15 @@ describe("rehype-obsidian", () => {
         "https://www.youtube.com/playlist?list=PL123",
         "https://www.youtube.com/embed/videoseries?list=PL123",
       ],
+      // Protocol-relative and plain-HTTP URLs, as notes copy them
+      [
+        "//www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      ],
+      [
+        "http://youtube.com/watch?v=dQw4w9WgXcQ",
+        "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      ],
     ];
     for (const [src, embed] of embedded) {
       const tree = await process(`<img src="${src}" />`);
@@ -294,6 +303,9 @@ describe("rehype-obsidian", () => {
       "https://example.com/embed/dQw4w9WgXcQ",
       "https://notyoutube.com/watch?v=dQw4w9WgXcQ",
       "https://youtube.com.example.org/watch?v=dQw4w9WgXcQ",
+      "https://notyoutu.be/dQw4w9WgXcQ",
+      "https://youtu.be.example.org/watch?v=dQw4w9WgXcQ",
+      "ftp://www.youtube.com/watch?v=dQw4w9WgXcQ",
       "https://example.com/gallery?list=PL123",
       "images/v/abcdefghijk",
     ]) {
@@ -631,6 +643,23 @@ describe("heading data", () => {
       "Hello world",
     );
     expect(findFirstElement(tree, "h3")!.properties?.dataHeading).toBe("Two");
+    // A comment in the heading (kept by rehype-raw) is not part of its text.
+    const commented = await process("<h2>A <!-- note -->B</h2>");
+    expect(findFirstElement(commented, "h2")!.properties?.dataHeading).toBe(
+      "A B",
+    );
+    // One a step before it wrote (github-flavored-markdown, as written) stays;
+    // other blocks get none.
+    const written = await process(
+      '<h2 data-heading="a -> b">a → b</h2>\n<p>p</p>\n<hr>',
+    );
+    expect(findFirstElement(written, "h2")!.properties?.dataHeading).toBe(
+      "a -> b",
+    );
+    for (const tag of ["p", "hr"])
+      expect(
+        findFirstElement(written, tag)!.properties?.dataHeading,
+      ).toBeUndefined();
     const off = await process("<h2>A</h2>", { headingData: false });
     expect(
       findFirstElement(off, "h2")!.properties?.dataHeading,
@@ -674,6 +703,38 @@ describe("list bullets", () => {
     expect(bullets(tree).length).toBe(3);
     const off = await process(LIST, { listBullets: false });
     expect(bullets(off).length).toBe(0);
+  });
+
+  it("reads lists as remark-rehype emits them, with newlines between items, idempotently", async () => {
+    // `- a\n- b\n  1. c` through remark-parse, remark-gfm and remark-rehype
+    const html =
+      "<ul>\n<li>a</li>\n<li>b\n<ol>\n<li>c</li>\n</ol>\n</li>\n</ul>";
+    const once = await process(html);
+    const check = (tree: Root) => {
+      const ul = findFirstElement(tree, "ul")!;
+      expect(ul.properties?.className).toEqual(["has-list-bullet"]);
+      const [a, b, c] = findElements(tree, "li");
+      expect(getClasses(a!.children[0] as Element)).toEqual(["list-bullet"]);
+      expect(
+        b!.children.slice(0, 2).map((n) => getClasses(n as Element)),
+      ).toEqual([
+        ["list-bullet"],
+        ["list-collapse-indicator", "collapse-indicator", "collapse-icon"],
+      ]);
+      expect(c!.children).toMatchObject([{ type: "text", value: "c" }]);
+      const spans = findElements(tree, "span").map((n) => getClasses(n)[0]);
+      expect(spans).toEqual([
+        "list-bullet",
+        "list-bullet",
+        "list-collapse-indicator",
+      ]);
+    };
+    check(once);
+    const twice = (await unified()
+      .use(rehypeObsidian)
+      .run(structuredClone(once))) as Root;
+    check(twice);
+    expect(twice).toEqual(once);
   });
 });
 
@@ -741,9 +802,19 @@ describe("collapse indicators", () => {
       ).length;
     const tree = await process(html);
     expect(count(tree)).toBe(2);
-    const again = await process(html);
-    await unified().use(rehypeObsidian).run(again);
+    // Without the block wrappers the heading stays at the top level, where a
+    // second pass looks for it: it must find the arrow already there.
+    const unwrapped = { blockWrappers: false };
+    const again = await process(html, unwrapped);
+    await unified().use(rehypeObsidian, unwrapped).run(again);
     expect(count(again)).toBe(2);
+    expect(
+      getClasses(findFirstElement(again, "h2")!.children[0] as Element),
+    ).toEqual([
+      "heading-collapse-indicator",
+      "collapse-indicator",
+      "collapse-icon",
+    ]);
     expect(count(await process(html, { collapseIndicators: false }))).toBe(0);
   });
 });
@@ -814,6 +885,53 @@ describe("footnote markup", () => {
     const li = findFirstElement(tree, "li")!;
     expect(li.children[0]).toMatchObject({ type: "text", value: "body" });
     expect(findElements({ type: "root", children: [li] }, "p").length).toBe(0);
+  });
+
+  // `Text[^1] and more[^2].\n\n[^1]: two words\n[^2]: see [x](y)` through
+  // remark-parse, remark-gfm and remark-rehype: newlines between the items,
+  // and around each item's paragraph.
+  const PIPELINE =
+    '<p>Text<sup><a href="#user-content-fn-1" id="user-content-fnref-1" data-footnote-ref aria-describedby="footnote-label">1</a></sup> and more<sup><a href="#user-content-fn-2" id="user-content-fnref-2" data-footnote-ref aria-describedby="footnote-label">2</a></sup>.</p>\n' +
+    '<section data-footnotes class="footnotes"><h2 class="sr-only" id="footnote-label">Footnotes</h2>\n<ol>\n' +
+    '<li id="user-content-fn-1">\n<p>two words <a href="#user-content-fnref-1" data-footnote-backref="" aria-label="Back to reference 1" class="data-footnote-backref">↩</a></p>\n</li>\n' +
+    '<li id="user-content-fn-2">\n<p>see <a href="y">x</a> <a href="#user-content-fnref-2" data-footnote-backref="" aria-label="Back to reference 2" class="data-footnote-backref">↩</a></p>\n</li>\n' +
+    "</ol>\n</section>";
+
+  it("reads the footnotes remark-rehype emits", async () => {
+    const tree = await process(PIPELINE);
+    const items = findElements(tree, "li");
+    expect(items.map((li) => li.properties?.dataFootnoteId)).toEqual([
+      "user-content-fn-1",
+      "user-content-fn-2",
+    ]);
+    const [first, second] = findElements(tree, "p").slice(1);
+    // The space between the words stays; the one before the back-link goes.
+    expect(first!.children).toMatchObject([
+      { type: "text", value: "two words" },
+      { type: "element", tagName: "a", children: [{ value: "↩︎" }] },
+    ]);
+    // After a link, the whitespace node before the back-link is removed.
+    expect(second!.children).toMatchObject([
+      { type: "text", value: "see " },
+      { type: "element", tagName: "a", properties: { href: "y" } },
+      { type: "element", tagName: "a", children: [{ value: "↩︎" }] },
+    ]);
+    expect(second!.children.length).toBe(3);
+  });
+
+  it("leaves a <sup> that is not a footnote reference alone", async () => {
+    const tree = await process(
+      '<p>x<sup>2</sup> and <sup><a href="#a">3</a></sup></p>',
+    );
+    const sups = findElements(tree, "sup");
+    expect(sups.map((s) => s.properties?.className)).toEqual([
+      undefined,
+      undefined,
+    ]);
+    expect(textOf(sups[0]!)).toBe("2");
+    const link = findFirstElement(tree, "a")!;
+    expect(link.properties?.className).toBeUndefined();
+    expect(textOf(link)).toBe("3");
   });
 
   it("leaves them alone when disabled", async () => {
@@ -1014,6 +1132,30 @@ describe("block wrappers", () => {
     ]);
   });
 
+  it("names a figure without code el-figure", async () => {
+    const tree = await process(
+      '<figure><img src="x"><figcaption>c</figcaption></figure>',
+    );
+    expect(wrappers(tree)).toEqual([["el-figure", "figure"]]);
+    // A code block's figure without rehype-pretty-code's attribute is still one
+    const code = await process(
+      "<figure>\n<pre><code>x</code></pre>\n</figure>",
+    );
+    expect(wrappers(code)).toEqual([["el-pre", "figure"]]);
+  });
+
+  it("wraps once, with newlines between the blocks", async () => {
+    const once = await process("<p>a</p>\n<h3>b</h3>\n");
+    const twice = (await unified()
+      .use(rehypeObsidian)
+      .run(structuredClone(once))) as Root;
+    expect(wrappers(twice)).toEqual([
+      ["el-p", "p"],
+      ["el-h3", "h3"],
+    ]);
+    expect(twice).toEqual(once);
+  });
+
   it("wraps once", async () => {
     const once = await process("<p>a</p><h3>b</h3>");
     const twice = (await unified()
@@ -1026,7 +1168,12 @@ describe("block wrappers", () => {
   });
 
   it("can be turned off", async () => {
-    const tree = await process("<p>a</p>", { blockWrappers: false });
-    expect(wrappers(tree)).toEqual([["", ""]]);
+    const tree = await process("<p>a</p>\n<h3>b</h3>", {
+      blockWrappers: false,
+    });
+    expect(
+      tree.children.map((c) => (c.type === "element" ? c.tagName : c.type)),
+    ).toEqual(["p", "text", "h3"]);
+    expect(findElements(tree, "div")).toEqual([]);
   });
 });
