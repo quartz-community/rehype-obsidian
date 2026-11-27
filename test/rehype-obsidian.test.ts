@@ -1,7 +1,7 @@
 import type { Element, ElementContent, Root, Text } from "hast";
 import rehypeParse from "rehype-parse";
 import { unified } from "unified";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import rehypeObsidian, {
   blockReferences,
@@ -63,8 +63,8 @@ const getClasses = (el: Element): string[] =>
   Array.isArray(el.properties?.className)
     ? (el.properties.className as string[])
     : typeof el.properties?.className === "string"
-      ? [el.properties.className]
-      : [];
+    ? [el.properties.className]
+    : [];
 
 describe("rehype-obsidian", () => {
   it("handles block references on paragraphs", async () => {
@@ -75,7 +75,7 @@ describe("rehype-obsidian", () => {
 
     if (!paragraph) throw new Error("Paragraph not found");
     const textChild = paragraph.children.find(
-      (child): child is Text => child.type === "text",
+      (child): child is Text => child.type === "text"
     );
     expect(textChild?.value).toBe("Some text");
   });
@@ -86,7 +86,7 @@ describe("rehype-obsidian", () => {
       "<p>A paragraph. ^Real</p><ul><li>item ^item</li></ul>" +
         '<p><a href="#%5Ereal">md</a> <a href="#^item">raw</a> <a href="#%5EREAL">case</a>' +
         ' <a href="#%5Emissing">missing</a> <a href="#heading">heading</a>' +
-        ' <a href="other#%5Ereal">other note</a></p>',
+        ' <a href="other#%5Ereal">other note</a></p>'
     );
     const hrefs = findElements(tree, "a").map((a) => a.properties?.href);
     expect(hrefs).toEqual([
@@ -104,7 +104,7 @@ describe("rehype-obsidian", () => {
       '<p>x ^real</p><p><a href="#%5Ereal">l</a></p>',
       {
         blockReferences: false,
-      },
+      }
     );
     expect(findFirstElement(tree, "a")?.properties?.href).toBe("#%5Ereal");
   });
@@ -112,7 +112,7 @@ describe("rehype-obsidian", () => {
   it("gives a block and a heading of the same name different ids", async () => {
     const tree = await process(
       '<h2 id="para-1">Para 1</h2><p>some para ^para-1</p>' +
-        '<p><a href="#%5Epara-1">block</a> <a href="#para-1">heading</a></p>',
+        '<p><a href="#%5Epara-1">block</a> <a href="#para-1">heading</a></p>'
     );
     expect(findFirstElement(tree, "h2")?.properties?.id).toBe("para-1");
     expect(findElements(tree, "p")[0]?.properties?.id).toBe("^para-1");
@@ -155,14 +155,14 @@ describe("rehype-obsidian", () => {
     expect(paragraph?.properties?.id).toBe("^two");
     expect(findFirstElement(tree, "strong")?.children).toEqual([]);
     const texts = paragraph?.children.filter(
-      (child): child is Text => child.type === "text",
+      (child): child is Text => child.type === "text"
     );
     expect(texts?.map((t) => t.value).join("|")).toBe("x | y");
   });
 
   it("keeps a trailing block reference on its own paragraph", async () => {
     const tree = await process(
-      '<ul><li>a</li></ul><p>x <a href="u">l</a> ^blk</p>',
+      '<ul><li>a</li></ul><p>x <a href="u">l</a> ^blk</p>'
     );
     expect(findFirstElement(tree, "p")?.properties?.id).toBe("^blk");
     expect(findFirstElement(tree, "ul")?.properties?.id).toBeUndefined();
@@ -170,7 +170,7 @@ describe("rehype-obsidian", () => {
 
   it("gives a table cell's block reference to the table", async () => {
     const tree = await process(
-      "<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>a ^blk</td></tr></tbody></table>",
+      "<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>a ^blk</td></tr></tbody></table>"
     );
     expect(findFirstElement(tree, "table")?.properties?.id).toBe("^blk");
     const cell = findFirstElement(tree, "td");
@@ -191,12 +191,12 @@ describe("rehype-obsidian", () => {
       const tree = await process(html);
       expect(
         (findFirstElement(tree, tag)?.children[0] as Text).value,
-        html,
+        html
       ).toBe(text);
     }
     const stripped = await process("<p><mark>a ^blk</mark> b</p>");
     expect(
-      (findFirstElement(stripped, "mark")?.children[0] as Text).value,
+      (findFirstElement(stripped, "mark")?.children[0] as Text).value
     ).toBe("a ");
   });
 
@@ -210,16 +210,16 @@ describe("rehype-obsidian", () => {
       const tree = await process(html);
       expect(findFirstElement(tree, "p")?.properties?.id, html).toBeUndefined();
       expect((findFirstElement(tree, "a")?.children[0] as Text).value).toBe(
-        text,
+        text
       );
     }
     const markdown = await process('<p>7 <a href="n">text ^abc</a></p>');
     expect(findFirstElement(markdown, "p")?.properties?.id).toBe("^abc");
     expect((findFirstElement(markdown, "a")?.children[0] as Text).value).toBe(
-      "text ",
+      "text "
     );
     const trailing = await process(
-      '<p>18 text <a href="n" data-wikilink>n</a> ^rrr</p>',
+      '<p>18 text <a href="n" data-wikilink>n</a> ^rrr</p>'
     );
     expect(findFirstElement(trailing, "p")?.properties?.id).toBe("^rrr");
   });
@@ -238,24 +238,24 @@ describe("rehype-obsidian", () => {
 
   it("drops the line break after display math in a paragraph", async () => {
     const tree = await process(
-      '<p>a <code class="language-math math-display">y^2</code><br>\nb</p>',
+      '<p>a <code class="language-math math-display">y^2</code><br>\nb</p>'
     );
     expect(findElements(tree, "br")).toHaveLength(0);
     const kept = await process(
-      '<p>a <code class="language-math math-inline">y</code><br>\nb</p>',
+      '<p>a <code class="language-math math-inline">y</code><br>\nb</p>'
     );
     expect(findElements(kept, "br")).toHaveLength(1);
   });
 
   it("replaces YouTube images with embeds", async () => {
     const tree = await process(
-      '<img src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />',
+      '<img src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />'
     );
     const iframe = findFirstElement(tree, "iframe");
 
     expect(iframe).toBeDefined();
     expect(iframe?.properties?.src).toBe(
-      "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      "https://www.youtube.com/embed/dQw4w9WgXcQ"
     );
   });
 
@@ -290,7 +290,7 @@ describe("rehype-obsidian", () => {
     for (const [src, embed] of embedded) {
       const tree = await process(`<img src="${src}" />`);
       expect(findFirstElement(tree, "iframe")?.properties?.src, src).toBe(
-        embed,
+        embed
       );
     }
   });
@@ -318,7 +318,7 @@ describe("rehype-obsidian", () => {
   it("falls back to link blockquote for unavailable tweets", async () => {
     const tree = await process(
       '<img src="https://twitter.com/user/status/1234567890123456789" />' +
-        '<img src="https://x.com/another/status/9876543210987654321" />',
+        '<img src="https://x.com/another/status/9876543210987654321" />'
     );
     const blockquotes = findElements(tree, "blockquote");
 
@@ -332,24 +332,24 @@ describe("rehype-obsidian", () => {
 
     const firstLink = first.children.find(
       (child): child is Element =>
-        child.type === "element" && child.tagName === "a",
+        child.type === "element" && child.tagName === "a"
     );
     const secondLink = second.children.find(
       (child): child is Element =>
-        child.type === "element" && child.tagName === "a",
+        child.type === "element" && child.tagName === "a"
     );
 
     expect(firstLink?.properties?.href).toBe(
-      "https://twitter.com/user/status/1234567890123456789",
+      "https://twitter.com/user/status/1234567890123456789"
     );
     expect(secondLink?.properties?.href).toBe(
-      "https://x.com/another/status/9876543210987654321",
+      "https://x.com/another/status/9876543210987654321"
     );
   });
 
   it("fetches real tweet content via oEmbed", async () => {
     const tree = await process(
-      '<img src="https://x.com/kepano/status/1882142872826442145" />',
+      '<img src="https://x.com/kepano/status/1882142872826442145" />'
     );
 
     const img = findFirstElement(tree, "img");
@@ -379,7 +379,7 @@ describe("rehype-obsidian", () => {
       '<ul class="contains-task-list">' +
         '<li class="task-list-item"><input type="checkbox" disabled> unchecked</li>' +
         '<li class="task-list-item"><input type="checkbox" checked disabled> checked with x</li>' +
-        "</ul>",
+        "</ul>"
     );
 
     const items = findElements(tree, "li");
@@ -402,7 +402,7 @@ describe("rehype-obsidian", () => {
         '<li class="task-list-item" data-task-char="?"><input type="checkbox" checked disabled> question</li>' +
         '<li class="task-list-item" data-task-char="/"><input type="checkbox" checked disabled> partial</li>' +
         '<li class="task-list-item" data-task-char=" "><input type="checkbox" disabled> unchecked custom</li>' +
-        "</ul>",
+        "</ul>"
     );
 
     const items = findElements(tree, "li");
@@ -419,7 +419,7 @@ describe("rehype-obsidian", () => {
 
   it("adds mermaid expand controls", async () => {
     const tree = await process(
-      '<pre><code class="mermaid">graph LR</code></pre>',
+      '<pre><code class="mermaid">graph LR</code></pre>'
     );
     const pre = findFirstElement(tree, "pre");
 
@@ -436,7 +436,7 @@ describe("rehype-obsidian", () => {
   it("wraps Pele's div.mermaid with the expand controls, once", async () => {
     const tree = await process(
       '<p>Before</p><div class="mermaid">graph LR</div><p>After</p>',
-      { blockWrappers: false },
+      { blockWrappers: false }
     );
     const wrapper = findFirstElement(tree, "div");
 
@@ -454,13 +454,13 @@ describe("rehype-obsidian", () => {
 
   it("marks obsidian:// links", async () => {
     const tree = await process(
-      '<a href="obsidian://open?vault=Test&file=note">Open</a>',
+      '<a href="obsidian://open?vault=Test&file=note">Open</a>'
     );
     const link = findFirstElement(tree, "a");
 
     expect(link?.properties?.href).toBe("obsidian://open?vault=Test&file=note");
     expect(link?.properties?.dataObsidianUri).toBe(
-      "obsidian://open?vault=Test&file=note",
+      "obsidian://open?vault=Test&file=note"
     );
     expect(getClasses(link!)).toContain("obsidian-uri");
   });
@@ -478,7 +478,7 @@ describe("rehype-obsidian", () => {
         tweetEmbed: false,
         checkbox: false,
         obsidianUri: false,
-      },
+      }
     );
 
     const paragraph = findFirstElement(tree, "p");
@@ -491,7 +491,7 @@ describe("rehype-obsidian", () => {
     expect(paragraph?.properties?.id).toBeUndefined();
     if (!paragraph) throw new Error("Paragraph not found");
     const textChild = paragraph.children.find(
-      (child: ElementContent): child is Text => child.type === "text",
+      (child: ElementContent): child is Text => child.type === "text"
     );
     expect(textChild?.value).toBe("Keep ^blockId");
     expect(img).toBeDefined();
@@ -505,7 +505,7 @@ describe("rehype-obsidian", () => {
 
   it("applies multiple transforms in one pass", async () => {
     const tree = await process(
-      '<p>Task ^task</p><input type="checkbox" checked disabled /><pre><code class="mermaid">graph LR</code></pre><img src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />',
+      '<p>Task ^task</p><input type="checkbox" checked disabled /><pre><code class="mermaid">graph LR</code></pre><img src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />'
     );
 
     const paragraph = findFirstElement(tree, "p");
@@ -520,7 +520,7 @@ describe("rehype-obsidian", () => {
       "task-list-item-checkbox",
     ]);
     expect(iframe?.properties?.src).toBe(
-      "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      "https://www.youtube.com/embed/dQw4w9WgXcQ"
     );
     expect(pre?.children.length).toBe(3);
   });
@@ -529,7 +529,7 @@ describe("rehype-obsidian", () => {
 describe("stripComments", () => {
   it("removes the empty comment marker remark-obsidian leaves behind", async () => {
     const tree = await process(
-      "<p>before</p><obsidian-comment></obsidian-comment><p>after</p>",
+      "<p>before</p><obsidian-comment></obsidian-comment><p>after</p>"
     );
     expect(findFirstElement(tree, "obsidian-comment")).toBeUndefined();
     expect(findFirstElement(tree, "p")).toBeDefined();
@@ -537,7 +537,7 @@ describe("stripComments", () => {
 
   it("removes several markers, including one nested in a paragraph", async () => {
     const tree = await process(
-      "<p>a<obsidian-comment></obsidian-comment>b</p><obsidian-comment></obsidian-comment>",
+      "<p>a<obsidian-comment></obsidian-comment>b</p><obsidian-comment></obsidian-comment>"
     );
     expect(findFirstElement(tree, "obsidian-comment")).toBeUndefined();
   });
@@ -578,7 +578,7 @@ describe("bareFootnotes", () => {
 
   it("leaves a reference alone when its definition exists", async () => {
     const tree = await process(
-      `${REF}<section class="footnotes"><li id="user-content-fn-cell">body</li></section>`,
+      `${REF}<section class="footnotes"><li id="user-content-fn-cell">body</li></section>`
     );
     expect(findFirstElement(tree, "sup")).toBeDefined();
   });
@@ -596,7 +596,7 @@ describe("bareFootnotes", () => {
   it("closes the gap a bared marker leaves in the numbering", async () => {
     const tree = await process(
       `<p>see ${REF} and ${defined("b", "2")}</p>${section("b")}`,
-      { footnoteMarkup: false },
+      { footnoteMarkup: false }
     );
     expect(text(tree)).toContain("see acell and 1");
   });
@@ -625,7 +625,7 @@ describe("bareFootnotes", () => {
   it("keeps repeated references to one definition on a shared number", async () => {
     const tree = await process(
       `<p>${REF} ${defined("b", "2")} ${defined("b", "2")}</p>${section("b")}`,
-      { footnoteMarkup: false },
+      { footnoteMarkup: false }
     );
     expect(findElements(tree, "sup").map((s) => text(s as never))).toEqual([
       "1",
@@ -637,32 +637,32 @@ describe("bareFootnotes", () => {
 describe("heading data", () => {
   it("marks headings with their text, as Obsidian", async () => {
     const tree = await process(
-      '<h2 id="x">Hello <em>world</em></h2><h3>Two</h3>',
+      '<h2 id="x">Hello <em>world</em></h2><h3>Two</h3>'
     );
     expect(findFirstElement(tree, "h2")!.properties?.dataHeading).toBe(
-      "Hello world",
+      "Hello world"
     );
     expect(findFirstElement(tree, "h3")!.properties?.dataHeading).toBe("Two");
     // A comment in the heading (kept by rehype-raw) is not part of its text.
     const commented = await process("<h2>A <!-- note -->B</h2>");
     expect(findFirstElement(commented, "h2")!.properties?.dataHeading).toBe(
-      "A B",
+      "A B"
     );
     // One a step before it wrote (github-flavored-markdown, as written) stays;
     // other blocks get none.
     const written = await process(
-      '<h2 data-heading="a -> b">a → b</h2>\n<p>p</p>\n<hr>',
+      '<h2 data-heading="a -> b">a → b</h2>\n<p>p</p>\n<hr>'
     );
     expect(findFirstElement(written, "h2")!.properties?.dataHeading).toBe(
-      "a -> b",
+      "a -> b"
     );
     for (const tag of ["p", "hr"])
       expect(
-        findFirstElement(written, tag)!.properties?.dataHeading,
+        findFirstElement(written, tag)!.properties?.dataHeading
       ).toBeUndefined();
     const off = await process("<h2>A</h2>", { headingData: false });
     expect(
-      findFirstElement(off, "h2")!.properties?.dataHeading,
+      findFirstElement(off, "h2")!.properties?.dataHeading
     ).toBeUndefined();
   });
 });
@@ -697,7 +697,7 @@ describe("list bullets", () => {
   it("adds one bullet per item and can be turned off", async () => {
     const bullets = (t: Root) =>
       findElements(t, "span").filter((s) =>
-        String(s.properties?.className).includes("list-bullet"),
+        String(s.properties?.className).includes("list-bullet")
       );
     const tree = await process(LIST);
     expect(bullets(tree).length).toBe(3);
@@ -716,7 +716,7 @@ describe("list bullets", () => {
       const [a, b, c] = findElements(tree, "li");
       expect(getClasses(a!.children[0] as Element)).toEqual(["list-bullet"]);
       expect(
-        b!.children.slice(0, 2).map((n) => getClasses(n as Element)),
+        b!.children.slice(0, 2).map((n) => getClasses(n as Element))
       ).toEqual([
         ["list-bullet"],
         ["list-collapse-indicator", "collapse-indicator", "collapse-icon"],
@@ -744,7 +744,7 @@ describe("collapse indicators", () => {
 
   it("opens the note's headings with Obsidian's fold arrow", async () => {
     const tree = await process(
-      '<h2 id="a">A</h2><blockquote><h3>In a quote</h3></blockquote>',
+      '<h2 id="a">A</h2><blockquote><h3>In a quote</h3></blockquote>'
     );
     const h2 = findFirstElement(tree, "h2")!;
     const arrow = h2.children[0] as Element;
@@ -768,7 +768,7 @@ describe("collapse indicators", () => {
     const tree = await process(
       "<ul><li>a<ul><li>b</li></ul></li></ul>" +
         "<ol><li>c<ul><li>d</li></ul></li></ol>" +
-        '<ul class="contains-task-list"><li class="task-list-item"><input type="checkbox"> e<ul><li>f</li></ul></li></ul>',
+        '<ul class="contains-task-list"><li class="task-list-item"><input type="checkbox"> e<ul><li>f</li></ul></li></ul>'
     );
     const [a, b, c, d, e, f] = findElements(tree, "li");
     expect(a!.children.slice(0, 2).map(classes)).toEqual([
@@ -789,8 +789,8 @@ describe("collapse indicators", () => {
     for (const leaf of [b, d, f])
       expect(
         leaf!.children.some((n) =>
-          String(classes(n)).includes("collapse-indicator"),
-        ),
+          String(classes(n)).includes("collapse-indicator")
+        )
       ).toBe(false);
   });
 
@@ -798,7 +798,7 @@ describe("collapse indicators", () => {
     const html = "<h2>A</h2><ul><li>a<ul><li>b</li></ul></li></ul>";
     const count = (t: Root) =>
       findElements(t, "span").filter((s) =>
-        String(s.properties?.className).includes("collapse-indicator"),
+        String(s.properties?.className).includes("collapse-indicator")
       ).length;
     const tree = await process(html);
     expect(count(tree)).toBe(2);
@@ -809,7 +809,7 @@ describe("collapse indicators", () => {
     await unified().use(rehypeObsidian, unwrapped).run(again);
     expect(count(again)).toBe(2);
     expect(
-      getClasses(findFirstElement(again, "h2")!.children[0] as Element),
+      getClasses(findFirstElement(again, "h2")!.children[0] as Element)
     ).toEqual([
       "heading-collapse-indicator",
       "collapse-indicator",
@@ -921,7 +921,7 @@ describe("footnote markup", () => {
 
   it("leaves a <sup> that is not a footnote reference alone", async () => {
     const tree = await process(
-      '<p>x<sup>2</sup> and <sup><a href="#a">3</a></sup></p>',
+      '<p>x<sup>2</sup> and <sup><a href="#a">3</a></sup></p>'
     );
     const sups = findElements(tree, "sup");
     expect(sups.map((s) => s.properties?.className)).toEqual([
@@ -937,7 +937,7 @@ describe("footnote markup", () => {
   it("leaves them alone when disabled", async () => {
     const tree = await process(NOTE, { footnoteMarkup: false });
     expect(
-      findFirstElement(tree, "sup")!.properties?.className,
+      findFirstElement(tree, "sup")!.properties?.className
     ).toBeUndefined();
     expect(findElements(tree, "hr").length).toBe(0);
   });
@@ -1047,7 +1047,7 @@ describe("coloured highlights", () => {
     expect(
       await markOf("<mark>\u{1F534} text</mark>", {
         colouredHighlights: false,
-      }),
+      })
     ).toEqual({
       colour: undefined,
       text: "\u{1F534} text",
@@ -1069,7 +1069,7 @@ describe("block wrappers", () => {
 
   it("wraps each top-level block in Obsidian's div.el-*", async () => {
     const tree = await process(
-      "<h2>Title</h2>\n<p>Text</p>\n<ul><li>a</li></ul>\n<blockquote><p>q</p></blockquote>\n<table><tr><td>1</td></tr></table>\n<hr>",
+      "<h2>Title</h2>\n<p>Text</p>\n<ul><li>a</li></ul>\n<blockquote><p>q</p></blockquote>\n<table><tr><td>1</td></tr></table>\n<hr>"
     );
     expect(wrappers(tree)).toEqual([
       ["el-h2", "h2"],
@@ -1085,7 +1085,7 @@ describe("block wrappers", () => {
 
   it("leaves nested blocks unwrapped", async () => {
     const tree = await process(
-      '<div class="callout" data-callout="note"><div class="callout-content"><p>Inside</p></div></div><blockquote><p>q</p></blockquote>',
+      '<div class="callout" data-callout="note"><div class="callout-content"><p>Inside</p></div></div><blockquote><p>q</p></blockquote>'
     );
     expect(wrappers(tree)).toEqual([
       ["el-div", "div"],
@@ -1093,14 +1093,14 @@ describe("block wrappers", () => {
     ]);
     // Only the top-level blocks: the callout's paragraph has none.
     const content = findElements(tree, "div").find((d) =>
-      getClasses(d).includes("callout-content"),
+      getClasses(d).includes("callout-content")
     );
     expect((content?.children[0] as Element).tagName).toBe("p");
   });
 
   it("names Quartz's code, diagram, maths and footnote blocks as Obsidian does", async () => {
     const tree = await process(
-      '<figure data-rehype-pretty-code-figure><pre><code>x</code></pre></figure><div class="mermaid">graph LR</div><span class="katex-display">m</span><pre><code class="language-math math-display">x</code></pre><figure data-rehype-pretty-code-figure><pre data-language="math"><code data-language="math">y</code></pre></figure><section data-footnotes class="footnotes"><ol><li>f</li></ol></section>',
+      '<figure data-rehype-pretty-code-figure><pre><code>x</code></pre></figure><div class="mermaid">graph LR</div><span class="katex-display">m</span><pre><code class="language-math math-display">x</code></pre><figure data-rehype-pretty-code-figure><pre data-language="math"><code data-language="math">y</code></pre></figure><section data-footnotes class="footnotes"><ol><li>f</li></ol></section>'
     );
     expect(wrappers(tree).map(([w]) => w)).toEqual([
       "el-pre",
@@ -1116,7 +1116,7 @@ describe("block wrappers", () => {
 
   it("keeps a note embed in its paragraph's wrapper", async () => {
     const tree = await process(
-      '<p></p><div class="transclude internal-embed markdown-embed"><a href="x" class="transclude-inner">x</a></div><p>After</p>',
+      '<p></p><div class="transclude internal-embed markdown-embed"><a href="x" class="transclude-inner">x</a></div><p>After</p>'
     );
     expect(wrappers(tree)).toEqual([
       ["el-p", "p+div"],
@@ -1124,7 +1124,7 @@ describe("block wrappers", () => {
     ]);
     // With the empty paragraph the parser leaves after it.
     const split = await process(
-      '<p></p><div class="transclude internal-embed markdown-embed"><a href="x" class="transclude-inner">x</a></div><p></p><p>After</p>',
+      '<p></p><div class="transclude internal-embed markdown-embed"><a href="x" class="transclude-inner">x</a></div><p></p><p>After</p>'
     );
     expect(wrappers(split)).toEqual([
       ["el-p", "p+div+p"],
@@ -1134,12 +1134,12 @@ describe("block wrappers", () => {
 
   it("names a figure without code el-figure", async () => {
     const tree = await process(
-      '<figure><img src="x"><figcaption>c</figcaption></figure>',
+      '<figure><img src="x"><figcaption>c</figcaption></figure>'
     );
     expect(wrappers(tree)).toEqual([["el-figure", "figure"]]);
     // A code block's figure without rehype-pretty-code's attribute is still one
     const code = await process(
-      "<figure>\n<pre><code>x</code></pre>\n</figure>",
+      "<figure>\n<pre><code>x</code></pre>\n</figure>"
     );
     expect(wrappers(code)).toEqual([["el-pre", "figure"]]);
   });
@@ -1172,8 +1172,480 @@ describe("block wrappers", () => {
       blockWrappers: false,
     });
     expect(
-      tree.children.map((c) => (c.type === "element" ? c.tagName : c.type)),
+      tree.children.map((c) => (c.type === "element" ? c.tagName : c.type))
     ).toEqual(["p", "text", "h3"]);
     expect(findElements(tree, "div")).toEqual([]);
+  });
+});
+
+// An identifier on a line of its own, after the block it names, as remark-rehype emits it: the
+// blocks with a "\n" text between them. Obsidian 1.15.0 renders the block alone and registers
+// the identifier on it (remark-obsidian goldens `block-ref/own-line-after-*`).
+describe("block reference on its own line", () => {
+  it("names the quote above it and removes its paragraph", async () => {
+    const tree = await process(
+      "<blockquote>\n<p>q</p>\n</blockquote>\n<p>^Quote</p>"
+    );
+    expect(findFirstElement(tree, "blockquote")?.properties?.id).toBe("^quote");
+    expect(findElements(tree, "p").map((p) => p.children.length)).toEqual([1]);
+  });
+
+  it("names a callout above it", async () => {
+    const tree = await process(
+      '<div class="callout"><p>c</p></div>\n<p>^call</p>',
+      { blockWrappers: false }
+    );
+    expect(findFirstElement(tree, "div")?.properties?.id).toBe("^call");
+  });
+
+  it("leaves a quote alone when the paragraph after it holds more than an identifier", async () => {
+    const tree = await process(
+      "<blockquote>\n<p>q</p>\n</blockquote>\n<p><em>x</em> ^b</p>"
+    );
+    expect(
+      findFirstElement(tree, "blockquote")?.properties?.id
+    ).toBeUndefined();
+    const tree2 = await process(
+      "<blockquote>\n<p>q</p>\n</blockquote>\n<p>not ^b here</p>"
+    );
+    expect(
+      findFirstElement(tree2, "blockquote")?.properties?.id
+    ).toBeUndefined();
+  });
+
+  it("names the list, table or paragraph above it", async () => {
+    for (const [html, tag] of [
+      ["<ul>\n<li>x</li>\n</ul>\n<p>^b</p>", "ul"],
+      ["<table><thead><tr><th>x</th></tr></thead></table>\n<p>^b</p>", "table"],
+      ["<p>x</p>\n<p>^b</p>", "p"],
+    ] as const) {
+      const tree = await process(html);
+      expect(findFirstElement(tree, tag)?.properties?.id, html).toBe("^b");
+    }
+  });
+
+  it("names itself when nothing comes before it", async () => {
+    const file: { data?: Record<string, unknown> } = {};
+    const tree = unified()
+      .use(rehypeParse, { fragment: true })
+      .parse("<p>^b</p>");
+    blockReferences(tree, file);
+    expect(Object.keys(file.data!.blocks as object)).toEqual(["b"]);
+  });
+
+  // Bug: the identifier's paragraph is emptied but left in place (`<ul id="^b">…</ul>\n<p></p>`),
+  // where the quote's is removed and Obsidian renders none; with blockWrappers it also gets a
+  // `div.el-p` of its own.
+  it.fails(
+    "removes the emptied paragraph under a list, table or paragraph",
+    async () => {
+      for (const html of [
+        "<ul>\n<li>x</li>\n</ul>\n<p>^b</p>",
+        "<table><thead><tr><th>x</th></tr></thead></table>\n<p>^b</p>",
+        "<p>x</p>\n<p>^b</p>",
+      ]) {
+        const tree = await process(html, { blockWrappers: false });
+        expect(
+          findElements(tree, "p").filter((p) => p.children.length === 0),
+          html
+        ).toEqual([]);
+      }
+    }
+  );
+});
+
+describe("tweet embeds, offline", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const tweet = '<p><img src="https://x.com/user/status/123"></p>';
+
+  it("asks Twitter's oEmbed endpoint for the tweet, without its script", async () => {
+    const fetch = vi.fn(async () => new Response("", { status: 404 }));
+    vi.stubGlobal("fetch", fetch);
+    await process(tweet);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const url = new URL(String((fetch.mock.calls[0] as unknown[])[0]));
+    expect(url.origin + url.pathname).toBe(
+      "https://publish.twitter.com/oembed"
+    );
+    expect(url.searchParams.get("url")).toBe("https://x.com/user/status/123");
+    expect(url.searchParams.get("omit_script")).toBe("true");
+  });
+
+  it("renders the oEmbed HTML in place of the image, with Quartz's classes", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          author_name: "user",
+          html: '<blockquote class="twitter-tweet"><p>hello</p></blockquote>\n',
+        })
+      )
+    );
+    const tree = await process(tweet);
+    expect(findFirstElement(tree, "img")).toBeUndefined();
+    const quote = findFirstElement(tree, "blockquote")!;
+    expect(getClasses(quote)).toEqual([
+      "twitter-tweet",
+      "external-embed",
+      "twitter",
+    ]);
+    expect(findFirstElement(tree, "p")?.children[0]).toMatchObject({
+      tagName: "blockquote",
+    });
+  });
+
+  it("wraps oEmbed HTML without an element in a div", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ author_name: "u", html: "just text" }))
+    );
+    const tree = await process(tweet, { blockWrappers: false });
+    const div = findFirstElement(tree, "div")!;
+    expect(getClasses(div)).toEqual(["external-embed", "twitter"]);
+    expect(div.children).toMatchObject([{ type: "text", value: "just text" }]);
+  });
+
+  it("falls back to a link when the request fails or the answer has no HTML", async () => {
+    for (const fetch of [
+      vi.fn(async () => {
+        throw new Error("offline");
+      }),
+      vi.fn(async () => new Response("", { status: 500 })),
+      vi.fn(async () => Response.json({ author_name: "u" })),
+    ]) {
+      vi.stubGlobal("fetch", fetch);
+      const tree = await process(tweet);
+      const quote = findFirstElement(tree, "blockquote")!;
+      expect(getClasses(quote)).toEqual(["external-embed", "twitter"]);
+      const link = findFirstElement(tree, "a")!;
+      expect(link.properties.href).toBe("https://x.com/user/status/123");
+      expect((link.children[0] as Text).value).toBe("Tweet by @user");
+    }
+  });
+
+  it("only embeds status URLs on Twitter's hosts, and fetches nothing otherwise", async () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    for (const src of [
+      "https://x.com/user",
+      "https://x.com/user/status/abc",
+      "https://example.com/user/status/123",
+      "http://x.com/user/status/123",
+      "https://x.com/user/status/123/photo/1",
+    ]) {
+      const tree = await process(`<img src="${src}">`);
+      expect(findFirstElement(tree, "img")?.properties?.src, src).toBe(src);
+    }
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe("display math breaks under KaTeX and MathJax", () => {
+  it("drops the break after rendered display math, across spaces", async () => {
+    for (const math of [
+      '<span class="katex-display">y</span>',
+      '<mjx-container display="true">y</mjx-container>',
+      '<code class="math-display">y</code> \t',
+    ]) {
+      const tree = await process(`<p>a ${math}<br>\nb</p>`);
+      expect(findElements(tree, "br"), math).toHaveLength(0);
+    }
+  });
+
+  it("keeps the break after inline math, and one not straight after the formula", async () => {
+    for (const html of [
+      '<p>a <mjx-container display="false">y</mjx-container><br>\nb</p>',
+      '<p>a <span class="katex">y</span><br>\nb</p>',
+      '<p>a <span class="katex-display">y</span> x<br>\nb</p>',
+    ]) {
+      const tree = await process(html);
+      expect(findElements(tree, "br"), html).toHaveLength(1);
+    }
+  });
+});
+
+describe("obsidian:// links with classes", () => {
+  it("adds obsidian-uri once, after the link's own classes", async () => {
+    const tree = await process(
+      '<a class="external" href="obsidian://open?file=a">a</a>' +
+        '<a class="obsidian-uri x" href="obsidian://open?file=b">b</a>' +
+        '<a href="https://obsidian.md">c</a>'
+    );
+    const [a, b, c] = findElements(tree, "a");
+    expect(getClasses(a!)).toEqual(["external", "obsidian-uri"]);
+    expect(getClasses(b!)).toEqual(["obsidian-uri", "x"]);
+    expect(getClasses(c!)).toEqual([]);
+    expect(c!.properties.dataObsidianUri).toBeUndefined();
+  });
+});
+
+describe("footnote markup, edge cases", () => {
+  const ref = (label: string, describedBy = "footnote-label") =>
+    `<sup><a href="#user-content-fn-1" id="user-content-fnref-1" data-footnote-ref="" aria-describedby="${describedBy}">${label}</a></sup>`;
+  const textOf = (node: Element): string =>
+    node.children.map((c) => (c.type === "text" ? c.value : "")).join("");
+
+  it("brackets multi-digit ordinals and leaves other labels alone", async () => {
+    const tree = await process(
+      `<p>${ref("12")} ${ref("a")} ${ref("<em>3</em>")}</p>`,
+      { bareFootnotes: false }
+    );
+    const refs = findElements(tree, "a");
+    expect(refs.map(textOf)).toEqual(["[12]", "a", ""]);
+    expect(findFirstElement(tree, "em")?.children).toMatchObject([
+      { value: "3" },
+    ]);
+  });
+
+  it("keeps a repeated back-link's own text (↩ with its count)", async () => {
+    const tree = await process(
+      '<section data-footnotes=""><ol><li id="user-content-fn-1"><p>b <a href="#user-content-fnref-1" data-footnote-backref="">↩</a> <a href="#user-content-fnref-1-2" data-footnote-backref="">↩<sup>2</sup></a></p></li></ol></section>'
+    );
+    const [first, second] = findElements(tree, "a");
+    expect(textOf(first!)).toBe("↩︎");
+    expect(second!.children).toMatchObject([
+      { type: "text", value: "↩" },
+      { type: "element", tagName: "sup" },
+    ]);
+  });
+
+  it("removes all the whitespace before the back-link", async () => {
+    const tree = await process(
+      '<section data-footnotes=""><ol><li id="user-content-fn-1"><p>body  \n <a href="#user-content-fnref-1" data-footnote-backref="">↩</a></p></li></ol></section>'
+    );
+    expect(findFirstElement(tree, "p")?.children[0]).toMatchObject({
+      value: "body",
+    });
+  });
+
+  it("keeps other aria-describedby ids when the heading goes", async () => {
+    const tree = await process(
+      `<p>${ref("1", "footnote-label note-1")}</p>` +
+        '<section data-footnotes=""><h2 id="footnote-label">Footnotes</h2><ol><li id="user-content-fn-1"><p>b</p></li></ol></section>',
+      { footnoteHeading: false, bareFootnotes: false }
+    );
+    expect(findFirstElement(tree, "a")?.properties?.ariaDescribedBy).toEqual([
+      "note-1",
+    ]);
+  });
+
+  it("leaves a section that is not the footnotes alone", async () => {
+    const tree = await process(
+      '<section><h2 id="x">Other</h2><ol><li id="user-content-fn-1"><p>b</p></li></ol></section>',
+      { footnoteHeading: false }
+    );
+    expect(findFirstElement(tree, "h2")).toBeDefined();
+    expect(findElements(tree, "hr")).toEqual([]);
+    expect(findFirstElement(tree, "li")?.properties?.dataFootnoteId).toBe(
+      undefined
+    );
+  });
+
+  it("unwraps only an inline footnote holding a single paragraph", async () => {
+    const tree = await process(
+      '<section data-footnotes=""><ol>' +
+        '<li id="user-content-fn-inline-footnote-1"><p>a</p><p>b</p></li>' +
+        '<li id="user-content-fn-not-inline-footnote-x"><p>c</p></li>' +
+        "</ol></section>"
+    );
+    const [two, named] = findElements(tree, "li");
+    expect(findElements({ type: "root", children: [two!] }, "p")).toHaveLength(
+      2
+    );
+    expect(
+      findElements({ type: "root", children: [named!] }, "p")
+    ).toHaveLength(1);
+  });
+});
+
+describe("bare footnotes, edge cases", () => {
+  it("bares a stray reference anchor that is outside any sup or link", async () => {
+    const tree = await process(
+      '<p>x <a href="#user-content-fn-q" data-footnote-ref="">1</a> y</p>',
+      { footnoteMarkup: false }
+    );
+    expect(findElements(tree, "a")).toEqual([]);
+    expect(findFirstElement(tree, "p")?.children).toMatchObject([
+      { value: "x " },
+      { value: "q" },
+      { value: " y" },
+    ]);
+  });
+
+  it("leaves links in a sup that are not footnote references", async () => {
+    const tree = await process('<p><sup><a href="#missing">1</a></sup></p>');
+    expect(findFirstElement(tree, "a")?.properties?.href).toBe("#missing");
+  });
+});
+
+describe("checkbox, edge cases", () => {
+  it("leaves other inputs alone", async () => {
+    const tree = await process('<input type="text" disabled>');
+    const input = findFirstElement(tree, "input")!;
+    expect(input.properties.disabled).toBe(true);
+    expect(input.properties.className).toBeUndefined();
+  });
+
+  it("marks only task list items, and adds is-checked once", async () => {
+    const tree = await process(
+      '<ul><li><input type="checkbox" checked> plain</li>' +
+        '<li class="task-list-item is-checked"><input type="checkbox" checked> done</li></ul>'
+    );
+    const [plain, done] = findElements(tree, "li");
+    expect(plain!.properties.dataTask).toBeUndefined();
+    expect(getClasses(plain!)).toEqual([]);
+    expect(getClasses(done!)).toEqual(["task-list-item", "is-checked"]);
+    expect(done!.properties.dataTask).toBe("x");
+  });
+});
+
+describe("mermaid expand controls, markup", () => {
+  it("builds the button and the dialog the mermaid script looks for", async () => {
+    const tree = await process(
+      '<pre><code class="mermaid">graph LR</code></pre>'
+    );
+    const [button, , container] = findFirstElement(tree, "pre")!
+      .children as Element[];
+    expect(getClasses(button!)).toEqual(["expand-button"]);
+    expect(
+      findFirstElement({ type: "root", children: [button!] }, "svg")
+    ).toBeDefined();
+    const space = container!.children[0] as Element;
+    expect(space.properties.id).toBe("mermaid-space");
+    expect(getClasses(space.children[0] as Element)).toEqual([
+      "mermaid-content",
+    ]);
+  });
+
+  it("wraps a div.mermaid once even when run again", async () => {
+    const tree = await process('<div class="mermaid">graph LR</div>', {
+      blockWrappers: false,
+    });
+    await unified().use(rehypeObsidian, { blockWrappers: false }).run(tree);
+    const wrappers = findElements(tree, "div").filter((d) =>
+      getClasses(d).includes("mermaid-diagram")
+    );
+    expect(wrappers).toHaveLength(1);
+    expect(findElements(tree, "button")).toHaveLength(1);
+  });
+});
+
+describe("block wrappers, edge cases", () => {
+  const names = (tree: Root) =>
+    tree.children
+      .filter((c): c is Element => c.type === "element")
+      .map((w) => [
+        getClasses(w).join("."),
+        w.children
+          .filter((c): c is Element => c.type === "element")
+          .map((c) => c.tagName)
+          .join("+"),
+      ]);
+
+  it("keeps a note embed with its paragraphs across the newlines between them", async () => {
+    const tree = await process(
+      '<p></p>\n<div class="transclude">x</div>\n<p></p>\n<p>After</p>'
+    );
+    expect(names(tree)).toEqual([
+      ["el-p", "p+div+p"],
+      ["el-p", "p"],
+    ]);
+  });
+
+  it("wraps an empty paragraph on its own when no embed follows", async () => {
+    const tree = await process("<p></p>\n<div>x</div>");
+    expect(names(tree)).toEqual([
+      ["el-p", "p"],
+      ["el-div", "div"],
+    ]);
+  });
+
+  it("names display maths in a figure or pre el-div", async () => {
+    const tree = await process(
+      '<figure><pre><code class="language-math">x</code></pre></figure>' +
+        '<pre><code class="math-display">x</code></pre>' +
+        '<pre><code class="language-js">x</code></pre>'
+    );
+    expect(names(tree).map(([w]) => w)).toEqual(["el-div", "el-div", "el-pre"]);
+  });
+});
+
+describe("block references, shields and nesting", () => {
+  it("never reads an identifier inside rendered math, SVG, scripts or styles", async () => {
+    for (const html of [
+      '<p>x <span class="katex">e ^x</span></p>',
+      '<p>x <span class="math math-inline">e ^x</span></p>',
+      '<p>x <mjx-container class="MathJax">e ^x</mjx-container></p>',
+      "<p>x <math><mi>e ^x</mi></math></p>",
+      "<p>x <svg><text>t ^x</text></svg></p>",
+      "<p>x <script>a ^x</script></p>",
+      "<p>x <style>a ^x</style></p>",
+    ]) {
+      const tree = await process(html);
+      expect(findFirstElement(tree, "p")?.properties?.id, html).toBeUndefined();
+    }
+  });
+
+  it("reads an identifier in other inline wrappers", async () => {
+    const tree = await process('<p>x <span class="note">t ^x</span></p>');
+    expect(findFirstElement(tree, "p")?.properties?.id).toBe("^x");
+  });
+
+  it("leaves a nested list's identifier to the nested item", async () => {
+    const tree = await process(
+      "<ul><li>outer<ul><li>inner ^in</li></ul></li></ul>"
+    );
+    const [outer, inner] = findElements(tree, "li");
+    expect(inner!.properties.id).toBe("^in");
+    expect(outer!.properties.id).toBeUndefined();
+  });
+
+  it("keeps file.data's existing blocks", () => {
+    const tree = unified()
+      .use(rehypeParse, { fragment: true })
+      .parse("<p>x ^b</p>");
+    const earlier = { type: "element", tagName: "p" } as Element;
+    const file: { data?: Record<string, unknown> } = {
+      data: { blocks: { a: earlier }, other: 1 },
+    };
+    blockReferences(tree, file);
+    expect(Object.keys(file.data!.blocks as object)).toEqual(["a", "b"]);
+    expect(file.data!.other).toBe(1);
+    expect(file.data!.htmlAst).toBe(tree);
+  });
+
+  it("does not point links that are not same-page block links", async () => {
+    const tree = await process(
+      '<p>x ^b</p><p><a href="^b">bare</a> <a href="#%E0%A4%A">bad</a></p>'
+    );
+    expect(findElements(tree, "a").map((a) => a.properties?.href)).toEqual([
+      "^b",
+      "#%E0%A4%A",
+    ]);
+  });
+});
+
+describe("YouTube embeds, more", () => {
+  it("embeds a video in its playlist, as an iframe Quartz styles", async () => {
+    const tree = await process(
+      '<img src="https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL123">'
+    );
+    const iframe = findFirstElement(tree, "iframe")!;
+    expect(iframe.properties).toMatchObject({
+      src: "https://www.youtube.com/embed/dQw4w9WgXcQ?list=PL123",
+      className: ["external-embed", "youtube"],
+      allow: "fullscreen",
+    });
+    expect(findFirstElement(tree, "img")).toBeUndefined();
+  });
+
+  it("needs an 11-character video id or a playlist", async () => {
+    const src = "https://www.youtube.com/watch?v=short";
+    const tree = await process(`<img src="${src}">`);
+    expect(findFirstElement(tree, "iframe")).toBeUndefined();
+    expect(findFirstElement(tree, "img")?.properties?.src).toBe(src);
   });
 });
