@@ -272,6 +272,11 @@ export const blockReferences = (tree: Root, file: VFileLike) => {
             const sibling = parent.children[i];
             if (isElement(sibling)) {
               applyBlockId(sibling, blockId, blocks);
+              // The emptied paragraph goes, as the quote's does: Obsidian renders none.
+              if (node.tagName === "p" && typeof index === "number") {
+                parent.children.splice(index, 1);
+                return index;
+              }
               return;
             }
           }

@@ -1233,25 +1233,44 @@ describe("block reference on its own line", () => {
     expect(Object.keys(file.data!.blocks as object)).toEqual(["b"]);
   });
 
-  // Bug: the identifier's paragraph is emptied but left in place (`<ul id="^b">…</ul>\n<p></p>`),
-  // where the quote's is removed and Obsidian renders none; with blockWrappers it also gets a
-  // `div.el-p` of its own.
-  it.fails(
-    "removes the emptied paragraph under a list, table or paragraph",
-    async () => {
-      for (const html of [
-        "<ul>\n<li>x</li>\n</ul>\n<p>^b</p>",
-        "<table><thead><tr><th>x</th></tr></thead></table>\n<p>^b</p>",
-        "<p>x</p>\n<p>^b</p>",
-      ]) {
-        const tree = await process(html, { blockWrappers: false });
-        expect(
-          findElements(tree, "p").filter((p) => p.children.length === 0),
-          html
-        ).toEqual([]);
-      }
+  // Obsidian renders no paragraph for the identifier, as for the quote's.
+  it("removes the emptied paragraph under a list, table or paragraph", async () => {
+    for (const html of [
+      "<ul>\n<li>x</li>\n</ul>\n<p>^b</p>",
+      "<table><thead><tr><th>x</th></tr></thead></table>\n<p>^b</p>",
+      "<p>x</p>\n<p>^b</p>",
+    ]) {
+      const tree = await process(html, { blockWrappers: false });
+      expect(
+        findElements(tree, "p").filter((p) => p.children.length === 0),
+        html
+      ).toEqual([]);
+      expect(findElements(tree, "p").length, html).toBe(
+        html.startsWith("<p>") ? 1 : 0
+      );
     }
-  );
+  });
+
+  it("leaves no wrapper of its own with block wrappers on", async () => {
+    const tree = await process("<ul>\n<li>x</li>\n</ul>\n<p>^b</p>\n<p>y</p>");
+    const wrappers = findElements(tree, "div").filter((d) =>
+      getClasses(d).includes("el-p")
+    );
+    expect(wrappers).toHaveLength(1);
+    expect(findFirstElement(tree, "ul")?.properties?.id).toBe("^b");
+    expect(findElements(tree, "p")).toHaveLength(1);
+  });
+
+  it("names the right blocks when two identifiers follow each other", async () => {
+    const file: { data?: Record<string, unknown> } = {};
+    const tree = unified()
+      .use(rehypeParse, { fragment: true })
+      .parse("<p>x</p>\n<p>^a</p>\n<ul>\n<li>y</li>\n</ul>\n<p>^b</p>");
+    blockReferences(tree, file);
+    expect(findFirstElement(tree, "p")?.properties?.id).toBe("^a");
+    expect(findFirstElement(tree, "ul")?.properties?.id).toBe("^b");
+    expect(findElements(tree, "p")).toHaveLength(1);
+  });
 });
 
 describe("tweet embeds, offline", () => {
